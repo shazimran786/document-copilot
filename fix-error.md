@@ -245,13 +245,82 @@ Import "supabase.lib.client_options" could not be resolved
 
 **Fix details**
 
-- Use the public top-level export instead (`SyncClientOptions` is re-exported as `ClientOptions`):
+- Use the public top-level export instead:
   ```python
+  # Sync client
   from supabase import Client, ClientOptions, create_client
-  ```
-- Replace `SyncClientOptions(...)` with `ClientOptions(...)` — same sync client options type.
 
-**Files changed:** `backend/app/database/supabase.py`
+  # Auth errors (also re-exported by supabase)
+  from supabase import AuthApiError, AuthError
+  ```
+- Do not import from `supabase.lib.client_options` or `supabase_auth.errors` — Pylance often cannot resolve those internal paths.
+
+**Files changed:** `backend/app/database/supabase.py`, `backend/app/auth/dependencies.py`
+
+**Status:** Fixed
+
+---
+
+## 10. Pylance: `supabase_auth.errors` could not be resolved
+
+**Error details**
+
+```
+Import "supabase_auth.errors" could not be resolved
+```
+
+- Reported in `backend/app/auth/dependencies.py`:
+  ```python
+  from supabase_auth.errors import AuthApiError, AuthError
+  ```
+- Runtime worked; `supabase_auth` is a transitive dependency of `supabase-py`, not a public import surface for app code.
+
+**Fix details**
+
+- Import auth errors from the top-level `supabase` package (re-exported in `supabase/__init__.py`):
+  ```python
+  from supabase import AuthApiError, AuthError, Client
+  ```
+
+**Files changed:** `backend/app/auth/dependencies.py`
+
+**Status:** Fixed
+
+---
+
+## 11. Pylance: `fastapi.security` (and other backend deps) could not be resolved
+
+**Error details**
+
+```
+Import "fastapi.security" could not be resolved
+Import "fastapi" could not be resolved
+```
+
+- Backend deps live in `backend/.venv`, but the workspace root has a separate stub `pyproject.toml` with no Python dependencies.
+- Pylance/Pyright was analyzing `backend/app/` without the backend virtualenv, so installed packages looked missing even though `uv run python` worked.
+
+**Fix details**
+
+- Point the IDE at the backend venv. Added repo-root **`pyrightconfig.json`**:
+  ```json
+  {
+    "venvPath": "backend",
+    "venv": ".venv",
+    "executionEnvironments": [{ "root": "backend", "extraPaths": ["backend"] }]
+  }
+  ```
+- Added **`.vscode/settings.json`**:
+  ```json
+  {
+    "python.defaultInterpreterPath": "${workspaceFolder}/backend/.venv/Scripts/python.exe",
+    "python.analysis.extraPaths": ["${workspaceFolder}/backend"]
+  }
+  ```
+- On macOS/Linux, use `backend/.venv/bin/python` for the interpreter path.
+- Reload the window or run **Python: Select Interpreter** → `backend/.venv` if warnings persist.
+
+**Files changed:** `pyrightconfig.json`, `.vscode/settings.json`
 
 **Status:** Fixed
 
@@ -267,6 +336,7 @@ Import "supabase.lib.client_options" could not be resolved
 | shadcn Tailwind / alias errors | Wire Tailwind v4 + `@/*` alias (see errors 4–5 above) |
 | shadcn init incomplete | `pnpm dlx shadcn@latest init --defaults --force` |
 | Backend Python deps | `cd backend && uv sync` |
-| Pylance unresolved `supabase.lib.*` | Import `ClientOptions` from `supabase`, not internal submodules |
+| Pylance unresolved `supabase.lib.*` / `supabase_auth.*` | Import from top-level `supabase` (`ClientOptions`, `AuthApiError`, …) |
+| Pylance unresolved `fastapi.*` in backend | Select `backend/.venv` interpreter; see `pyrightconfig.json` (§11) |
 
 **Last updated:** 2026-06-07

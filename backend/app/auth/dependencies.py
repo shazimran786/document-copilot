@@ -3,8 +3,7 @@ from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from supabase import Client
-from supabase_auth.errors import AuthApiError, AuthError
+from supabase import AuthApiError, AuthError, Client
 
 from app.database.supabase import create_user_scoped_client
 

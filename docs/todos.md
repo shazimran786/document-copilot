@@ -12,8 +12,9 @@ Reference: [architecture.md](architecture.md) · [client-brief.md](client-brief.
 
 ## Progress snapshot (2026-06-07)
 
+- **Branch state:** Reverted mistaken merge of remote `development` (full RAG stack). Local `development` is back at Phase 2 — do **not** `git pull` without reviewing incoming changes first.
 - **Phase 0–1:** Complete — local toolchain, Supabase project, env files filled, backend schema migrated to Supabase.
-- **Phase 2 (in progress):** Vite + React + TS frontend scaffolded; core `pnpm` deps installed. Backend CORS wired (`ALLOWED_ORIGINS` defaults to `http://localhost:5173`). Backend auth wired: `app/auth/dependencies.py` (JWT via Supabase Auth), `app/database/supabase.py` (user-scoped + service-role clients), protected `GET /me`. Tailwind/shadcn wiring, `src/lib/*`, sign-in UI, and end-to-end manual pass still pending.
+- **Phase 2 (in progress):** Backend auth complete (`GET /me`). Frontend Phase 2 wired: Tailwind + shadcn base, `src/lib/*`, email sign-in/sign-up, protected routes, app shell with sidebar placeholder + sign-out. Run the home-page checks after signing in to confirm `/health` and `/me`.
 - **Windows note:** `corepack enable` needs Administrator (writes to `Program Files\nodejs`). Use `npm install -g pnpm` instead — `pnpm` is installed and on PATH.
 
 ---
@@ -65,11 +66,11 @@ Thin browser shell plus backend auth wiring. No OpenAI or service-role keys in t
 
 - [x] Scaffold Vite + React + TS per [frontend-setup.md](guides/frontend-setup.md)
 - [x] Install frontend dependencies (`pnpm install`; `react-router-dom`, `@supabase/supabase-js`, `tailwindcss`, `@tailwindcss/vite`)
-- [ ] Tailwind + shadcn/ui base layout (`pnpm dlx shadcn@latest init`; wire `@tailwindcss/vite` in `vite.config.ts`)
-- [ ] `src/lib/env.ts`, `src/lib/supabase.ts`, `src/lib/http.ts`, `src/lib/api.ts`
-- [ ] Email sign-in / sign-up pages (Supabase Auth)
-- [ ] Protected routes — redirect unauthenticated users to login
-- [ ] App shell: sidebar (thread list), main chat area, sign-out
+- [x] Tailwind + shadcn/ui base layout (`pnpm dlx shadcn@latest init`; wire `@tailwindcss/vite` in `vite.config.ts`)
+- [x] `src/lib/env.ts`, `src/lib/supabase.ts`, `src/lib/http.ts`, `src/lib/api.ts`
+- [x] Email sign-in / sign-up pages (Supabase Auth)
+- [x] Protected routes — redirect unauthenticated users to login
+- [x] App shell: sidebar (thread list), main chat area, sign-out
 - [ ] Manual pass: sign in locally → health check succeeds → protected route loads
 
 ---
@@ -182,7 +183,7 @@ From [client-brief.md](client-brief.md) — tick when true in production:
 | Week | Focus                                                         |
 | ---- | ------------------------------------------------------------- |
 | 1    | Phase 0–1: Supabase, backend scaffold, schema migrated        |
-| 2    | Phase 2: Frontend scaffold + backend auth/CORS; sign-in works *(scaffold + CORS + backend auth done; frontend lib + sign-in UI next)* |
+| 2    | Phase 2: Frontend scaffold + backend auth/CORS; sign-in works *(code complete — run manual pass locally)* |
 | 3    | Phase 3–4: Download corpus, ingest, hybrid retrieval working  |
 | 4    | Phase 5: Streaming chat API with grounded agent               |
 | 5    | Phase 6–8: Chat UI + citations, hardening, deploy, pilot      |
