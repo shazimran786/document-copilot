@@ -12,10 +12,12 @@ Reference: [architecture.md](architecture.md) · [client-brief.md](client-brief.
 
 ## Progress snapshot (2026-06-07)
 
-- **Branch state:** Reverted mistaken merge of remote `development` (full RAG stack). Local `development` is back at Phase 2 — do **not** `git pull` without reviewing incoming changes first.
-- **Phase 0–1:** Complete — local toolchain, Supabase project, env files filled, backend schema migrated to Supabase.
-- **Phase 2 (in progress):** Backend auth complete (`GET /me`). Frontend Phase 2 wired: Tailwind + shadcn base, `src/lib/*`, email sign-in/sign-up, protected routes, app shell with sidebar placeholder + sign-out. Run the home-page checks after signing in to confirm `/health` and `/me`.
-- **Windows note:** `corepack enable` needs Administrator (writes to `Program Files\nodejs`). Use `npm install -g pnpm` instead — `pnpm` is installed and on PATH.
+- **Branch:** Local `development` @ `7cebbb4` — Phase 2 only. **Ahead 2 / behind 14** vs `origin/development` (remote still has the reverted full RAG stack). Do **not** `git pull` without a merge plan; use `git push --force-with-lease` only if you intend to replace remote with Phase 2.
+- **Phase 0–1:** Complete — toolchain, Supabase project, env files, Alembic schema migrated.
+- **Phase 2 (almost done):** Backend auth (`GET /me`, JWT via Supabase Auth, sync Supabase clients). Frontend: Tailwind/shadcn, `src/lib/*`, **Sign in | Sign up** tabs (`AuthLayout`), protected routes, app shell, home-page `/health` + `/me` checks. IDE: `pyrightconfig.json` points at `backend/.venv`.
+- **Remaining for Phase 2:** Manual pass only — run backend + frontend locally, sign up → sign in → both checks OK on home page → sign out.
+- **Next phase:** Phase 3 — corpus download and ingestion.
+- **Windows note:** `corepack enable` needs Administrator — use `npm install -g pnpm` instead.
 
 ---
 
@@ -68,10 +70,15 @@ Thin browser shell plus backend auth wiring. No OpenAI or service-role keys in t
 - [x] Install frontend dependencies (`pnpm install`; `react-router-dom`, `@supabase/supabase-js`, `tailwindcss`, `@tailwindcss/vite`)
 - [x] Tailwind + shadcn/ui base layout (`pnpm dlx shadcn@latest init`; wire `@tailwindcss/vite` in `vite.config.ts`)
 - [x] `src/lib/env.ts`, `src/lib/supabase.ts`, `src/lib/http.ts`, `src/lib/api.ts`
-- [x] Email sign-in / sign-up pages (Supabase Auth)
+- [x] Email sign-in / sign-up pages (Supabase Auth; `/login`, `/signup`, `AuthLayout` tab bar)
 - [x] Protected routes — redirect unauthenticated users to login
-- [x] App shell: sidebar (thread list), main chat area, sign-out
-- [ ] Manual pass: sign in locally → health check succeeds → protected route loads
+- [x] App shell: sidebar (thread list placeholder), main chat area, sign-out
+- [ ] Manual pass: sign up → sign in → home page shows **OK** for `GET /health` and `GET /me` → sign out
+  ```powershell
+  # Terminal 1: cd backend && uv run uvicorn app.main:app --reload
+  # Terminal 2: cd frontend && pnpm dev
+  # Browser: http://localhost:5173 — use Sign up tab, then Sign in tab
+  ```
 
 ---
 
@@ -183,7 +190,7 @@ From [client-brief.md](client-brief.md) — tick when true in production:
 | Week | Focus                                                         |
 | ---- | ------------------------------------------------------------- |
 | 1    | Phase 0–1: Supabase, backend scaffold, schema migrated        |
-| 2    | Phase 2: Frontend scaffold + backend auth/CORS; sign-in works *(code complete — run manual pass locally)* |
+| 2    | Phase 2: Auth shell end-to-end *(code done — manual pass + tick checkbox above)* |
 | 3    | Phase 3–4: Download corpus, ingest, hybrid retrieval working  |
 | 4    | Phase 5: Streaming chat API with grounded agent               |
 | 5    | Phase 6–8: Chat UI + citations, hardening, deploy, pilot      |
