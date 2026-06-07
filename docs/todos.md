@@ -2,7 +2,7 @@
 
 Work through these phases in order. Each phase unlocks the next.
 
-**Backend or frontend first?** Start with **shared foundation** (Supabase, env, Python 3.12), then **backend data + retrieval** — that is the product (grounded, cited answers). Build the **frontend shell in parallel** once the backend has auth and a stub chat endpoint; wire the real RAG path only after ingestion and retrieval work.
+**Backend or frontend first?** Start with **shared foundation** (Supabase, env, Python 3.12), then **backend schema** (Phase 1). Next, stand up the **app shell on both sides** — frontend scaffold plus backend auth/CORS (Phase 2) — so you can sign in and iterate on UI while building ingestion and retrieval. Wire the real RAG path only after Phases 3–5.
 
 **North star:** 5 senior analysts use it for a week and report ≥3 hours saved per analyst per week ([client brief](client-brief.md)).
 
@@ -10,11 +10,19 @@ Reference: [architecture.md](architecture.md) · [client-brief.md](client-brief.
 
 ---
 
+## Progress snapshot (2026-06-07)
+
+- **Phase 0–1:** Complete — local toolchain, Supabase project, env files filled, backend schema migrated to Supabase.
+- **Phase 2 (in progress):** Vite + React + TS frontend scaffolded; core `pnpm` deps installed. Backend CORS wired (`ALLOWED_ORIGINS` defaults to `http://localhost:5173`). Backend auth wired: `app/auth/dependencies.py` (JWT via Supabase Auth), `app/database/supabase.py` (user-scoped + service-role clients), protected `GET /me`. Tailwind/shadcn wiring, `src/lib/*`, sign-in UI, and end-to-end manual pass still pending.
+- **Windows note:** `corepack enable` needs Administrator (writes to `Program Files\nodejs`). Use `npm install -g pnpm` instead — `pnpm` is installed and on PATH.
+
+---
+
 ## Phase 0 — Local machine & accounts
 
 - [x] Install Python **3.12+** (`uv python install 3.12` or python.org installer)
 - [x] Install [uv](https://docs.astral.sh/uv/getting-started/installation/)
-- [x] Install Node **20+** and enable **pnpm** (`corepack enable`)
+- [x] Install Node **20+** and **pnpm** (`corepack enable`, or `npm install -g pnpm` on Windows without admin)
 - [x] Create [OpenAI API key](https://platform.openai.com/api-keys)
 - [x] Create Supabase project ([guide](guides/supabase-setup.md))
 - [x] Copy env templates: `backend/.env.example` → `backend/.env`, `frontend/.env.example` → `frontend/.env`
@@ -43,7 +51,30 @@ The schema is the contract between ingestion, retrieval, chat, and the UI. Get i
 
 ---
 
-## Phase 2 — Corpus download & ingestion
+## Phase 2 — Frontend scaffold & backend configuration
+
+Thin browser shell plus backend auth wiring. No OpenAI or service-role keys in the client.
+
+**Backend configuration**
+
+- [x] `app/auth/dependencies.py` — verify Supabase JWT on every protected route (`get_current_user`, `get_user_scoped_supabase`; test via `GET /me`)
+- [x] `app/database/supabase.py` — user-scoped and service-role clients
+- [x] CORS: `ALLOWED_ORIGINS` includes local frontend URL (`app/main.py` + `app/config.py`; default `http://localhost:5173`)
+
+**Frontend scaffold**
+
+- [x] Scaffold Vite + React + TS per [frontend-setup.md](guides/frontend-setup.md)
+- [x] Install frontend dependencies (`pnpm install`; `react-router-dom`, `@supabase/supabase-js`, `tailwindcss`, `@tailwindcss/vite`)
+- [ ] Tailwind + shadcn/ui base layout (`pnpm dlx shadcn@latest init`; wire `@tailwindcss/vite` in `vite.config.ts`)
+- [ ] `src/lib/env.ts`, `src/lib/supabase.ts`, `src/lib/http.ts`, `src/lib/api.ts`
+- [ ] Email sign-in / sign-up pages (Supabase Auth)
+- [ ] Protected routes — redirect unauthenticated users to login
+- [ ] App shell: sidebar (thread list), main chat area, sign-out
+- [ ] Manual pass: sign in locally → health check succeeds → protected route loads
+
+---
+
+## Phase 3 — Corpus download & ingestion
 
 No retrieval without indexed filings. Run this before the real chat agent.
 
@@ -60,7 +91,7 @@ No retrieval without indexed filings. Run this before the real chat agent.
 
 ---
 
-## Phase 3 — Retrieval (hybrid search)
+## Phase 4 — Retrieval (hybrid search)
 
 Trust starts here: the LLM only sees what retrieval returns.
 
@@ -73,12 +104,10 @@ Trust starts here: the LLM only sees what retrieval returns.
 
 ---
 
-## Phase 4 — LLM agent, grounding & chat API
+## Phase 5 — LLM agent, grounding & chat API
 
 Backend owns the full turn: retrieve → generate → validate citations → persist → stream.
 
-- [ ] `app/auth/dependencies.py` — verify Supabase JWT on every protected route
-- [ ] `app/database/supabase.py` — user-scoped and service-role clients
 - [ ] `app/database/chats.py` + `documents.py` — typed read/write helpers
 - [ ] `app/assistant/` — PydanticAI agent with `DocumentAgentDeps`, `GroundedAnswer`, `instructions.md`
 - [ ] Agent tools (bounded): `search_filings`, `read_chunk`, `read_surrounding_chunks`
@@ -92,19 +121,6 @@ Backend owns the full turn: retrieve → generate → validate citations → per
 - [ ] Persist user message, assistant message, and citations after successful run
 - [ ] Unit tests: citation validation, grounding enforcement, message conversion
 - [ ] Run example analyst questions from [client-brief.md](client-brief.md) via API or script; confirm cited answers or honest "not enough evidence"
-
----
-
-## Phase 5 — Frontend scaffold & auth
-
-Thin browser: session, chat UI, stream display. No OpenAI or service-role keys in the client.
-
-- [ ] Scaffold Vite + React + TS per [frontend-setup.md](guides/frontend-setup.md)
-- [ ] Tailwind + shadcn/ui base layout
-- [ ] `src/lib/env.ts`, `src/lib/supabase.ts`, `src/lib/http.ts`, `src/lib/api.ts`
-- [ ] Email sign-in / sign-up pages (Supabase Auth)
-- [ ] Protected routes — redirect unauthenticated users to login
-- [ ] App shell: sidebar (thread list), main chat area, sign-out
 
 ---
 
@@ -124,7 +140,6 @@ This is what analysts touch daily. Polish here drives pilot adoption.
 
 ## Phase 7 — Pilot readiness
 
-- [ ] CORS: `ALLOWED_ORIGINS` includes local frontend URL
 - [ ] Structured logging on backend (`structlog`) for auth, retrieval, and LLM failures
 - [ ] Run full example-question set from client brief; note gaps and fix retrieval or prompts
 - [ ] Confirm bot refuses to infer beyond filings (e.g. generative-AI margin question #10)
@@ -164,13 +179,13 @@ From [client-brief.md](client-brief.md) — tick when true in production:
 ## Suggested weekly focus (if building solo)
 
 
-| Week | Focus                                                        |
-| ---- | ------------------------------------------------------------ |
-| 1    | Phase 0–1: Supabase, backend scaffold, schema migrated       |
-| 2    | Phase 2–3: Download corpus, ingest, hybrid retrieval working |
-| 3    | Phase 4: Auth + streaming chat API with grounded agent       |
-| 4    | Phase 5–6: Frontend auth + chat + citations                  |
-| 5    | Phase 7–8: Hardening, example-question QA, deploy, pilot     |
+| Week | Focus                                                         |
+| ---- | ------------------------------------------------------------- |
+| 1    | Phase 0–1: Supabase, backend scaffold, schema migrated        |
+| 2    | Phase 2: Frontend scaffold + backend auth/CORS; sign-in works *(scaffold + CORS + backend auth done; frontend lib + sign-in UI next)* |
+| 3    | Phase 3–4: Download corpus, ingest, hybrid retrieval working  |
+| 4    | Phase 5: Streaming chat API with grounded agent               |
+| 5    | Phase 6–8: Chat UI + citations, hardening, deploy, pilot      |
 
 
 Adjust pace as needed; **do not skip ingestion/retrieval before wiring the real agent.**
