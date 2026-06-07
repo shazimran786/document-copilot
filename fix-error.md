@@ -326,6 +326,36 @@ Import "fastapi" could not be resolved
 
 ---
 
+## 12. Git commit fails — `ENOENT` on `vscode-git-*-sock` / git-editor.sh
+
+**Error details**
+
+```
+Error: connect ENOENT \\.\pipe\vscode-git-348e2c7073-sock
+error: there was a problem with the editor '...\cursor\...\git\dist\git-editor.sh'
+Please supply the message using either -m or -F option.
+```
+
+- Happens when committing from Cursor/VS Code Source Control and the IDE’s git commit-message pipe is unavailable (window reload, extension crash, or commit triggered outside the live IDE session).
+- Git opens `core.editor` (Cursor’s `git-editor.sh`) for the message; the named pipe is missing → commit aborts.
+
+**Fix details**
+
+- **Terminal commit (recommended):** pass the message inline so Git never opens an editor:
+  ```powershell
+  git commit -m "Your subject line" -m "Optional body paragraph."
+  ```
+- **Cursor UI:** close and reopen the Source Control commit box, or reload the window, then commit again.
+- **One-off bypass** without changing global git config:
+  ```powershell
+  git -c core.editor=true commit -m "Your message"
+  ```
+- Do not rely on the graphical commit box if the pipe error keeps recurring — use terminal `-m` instead.
+
+**Status:** Fixed (workflow)
+
+---
+
 ## Quick reference
 
 | Symptom | Command / action |
@@ -338,5 +368,6 @@ Import "fastapi" could not be resolved
 | Backend Python deps | `cd backend && uv sync` |
 | Pylance unresolved `supabase.lib.*` / `supabase_auth.*` | Import from top-level `supabase` (`ClientOptions`, `AuthApiError`, …) |
 | Pylance unresolved `fastapi.*` in backend | Select `backend/.venv` interpreter; see `pyrightconfig.json` (§11) |
+| Git commit `vscode-git-*-sock` ENOENT | `git commit -m "message"` in terminal (see §12) |
 
 **Last updated:** 2026-06-07
