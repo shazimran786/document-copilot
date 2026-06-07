@@ -2,12 +2,11 @@
 
 from functools import lru_cache
 
-from supabase import Client, create_client
-from supabase.lib.client_options import SyncClientOptions
+from supabase import Client, ClientOptions, create_client
 
 from app.config import settings
 
-_BACKEND_CLIENT_OPTIONS = SyncClientOptions(
+_BACKEND_CLIENT_OPTIONS = ClientOptions(
     auto_refresh_token=False,
     persist_session=False,
 )
