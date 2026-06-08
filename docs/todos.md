@@ -14,7 +14,7 @@ Reference: [architecture.md](architecture.md) · [client-brief.md](client-brief.
 
 - **Branch:** Local `development` @ `7cebbb4` — Phase 2 only. **Ahead 2 / behind 14** vs `origin/development` (remote still has the reverted full RAG stack). Do **not** `git pull` without a merge plan; use `git push --force-with-lease` only if you intend to replace remote with Phase 2.
 - **Phase 0–1:** Complete — toolchain, Supabase project, env files, Alembic schema migrated.
-- **Phase 2 (almost done):** Backend auth (`GET /me`, JWT via Supabase Auth, sync Supabase clients). Frontend: Tailwind/shadcn, `src/lib/*`, **Sign in | Sign up** tabs (`AuthLayout`), protected routes, app shell, home-page `/health` + `/me` checks. IDE: `pyrightconfig.json` points at `backend/.venv`.
+- **Phase 2 (almost done):** Backend auth (`GET /me`, JWT via Supabase Auth, sync Supabase clients). Frontend: Tailwind/shadcn, `src/lib/`*, **Sign in | Sign up** tabs (`AuthLayout`), protected routes, app shell, home-page `/health` + `/me` checks. IDE: `pyrightconfig.json` points at `backend/.venv`.
 - **Remaining for Phase 2:** Manual pass only — run backend + frontend locally, sign up → sign in → both checks OK on home page → sign out.
 - **Next phase:** Phase 3 — corpus download and ingestion.
 - **Windows note:** `corepack enable` needs Administrator — use `npm install -g pnpm` instead.
@@ -187,13 +187,13 @@ From [client-brief.md](client-brief.md) — tick when true in production:
 ## Suggested weekly focus (if building solo)
 
 
-| Week | Focus                                                         |
-| ---- | ------------------------------------------------------------- |
-| 1    | Phase 0–1: Supabase, backend scaffold, schema migrated        |
+| Week | Focus                                                                            |
+| ---- | -------------------------------------------------------------------------------- |
+| 1    | Phase 0–1: Supabase, backend scaffold, schema migrated                           |
 | 2    | Phase 2: Auth shell end-to-end *(code done — manual pass + tick checkbox above)* |
-| 3    | Phase 3–4: Download corpus, ingest, hybrid retrieval working  |
-| 4    | Phase 5: Streaming chat API with grounded agent               |
-| 5    | Phase 6–8: Chat UI + citations, hardening, deploy, pilot      |
+| 3    | Phase 3–4: Download corpus, ingest, hybrid retrieval working                     |
+| 4    | Phase 5: Streaming chat API with grounded agent                                  |
+| 5    | Phase 6–8: Chat UI + citations, hardening, deploy, pilot                         |
 
 
 Adjust pace as needed; **do not skip ingestion/retrieval before wiring the real agent.**

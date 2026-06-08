@@ -356,6 +356,99 @@ Please supply the message using either -m or -F option.
 
 ---
 
+## 13. Git merge conflict markers in backend/frontend files
+
+**Error details**
+
+- After merging remote `development`, unresolved markers remained in core files:
+  ```python
+  <<<<<<< HEAD
+  ...
+  =======
+  ...
+  >>>>>>> d41888da...
+  ```
+- Python fails to start; TypeScript/Vite builds may also fail.
+
+**Fix details**
+
+- List unmerged files:
+  ```powershell
+  git diff --name-only --diff-filter=U
+  ```
+- For a branch reset to Phase 2 (undo mistaken merge of full RAG stack):
+  ```powershell
+  git reset --hard ed6c892
+  ```
+  *(Use only when you intend to discard merge commits locally.)*
+- To resolve in place: pick one side per file (`git checkout --theirs -- path` or manual edit), remove all markers, then `git add` until `git diff --diff-filter=U` is empty.
+- Verify:
+  ```powershell
+  rg "^<<<<<<<|^=======|^>>>>>>>" .
+  cd backend
+  uv run python -c "from app.main import app"
+  ```
+
+**Status:** Fixed (local `development` at Phase 2 has no markers)
+
+---
+
+## 14. Local and `origin/development` diverged after revert
+
+**Error details**
+
+```
+Your branch and 'origin/development' have diverged,
+and have 2 and 14 different commits each, respectively.
+```
+
+- Local branch was reset to Phase 2; remote still has the full merged RAG stack from the mistaken pull/merge.
+- A plain `git pull` would reintroduce 14 remote commits and likely new conflicts.
+
+**Fix details**
+
+- **Stay on Phase 2 locally:** keep working; do not `git pull` without a plan.
+- **Replace remote with Phase 2** (only if intentional):
+  ```powershell
+  git push --force-with-lease origin development
+  ```
+- **Publish Phase 2 without overwriting remote:**
+  ```powershell
+  git push -u origin development:phase-2-auth
+  ```
+- Compare divergence:
+  ```powershell
+  git log --oneline origin/development..HEAD   # local only
+  git log --oneline HEAD..origin/development   # remote only
+  ```
+
+**Status:** Documented — local ahead 2 / behind 14 vs `origin/development`
+
+---
+
+## 15. ESLint: `set-state-in-effect` on auth home page checks
+
+**Error details**
+
+```
+react-hooks/set-state-in-effect
+Avoid calling setState() directly within an effect
+```
+
+- Triggered in `HomePage.tsx` when `useEffect` called a function that synchronously set loading state before async fetches.
+
+**Fix details**
+
+- Initialize check rows as `"loading"` in `useState` defaults.
+- Run fetches inside the effect; call `setState` only after `await` (inside async IIFE), with a `cancelled` flag on cleanup.
+- Re-run checks via a `runId` counter instead of calling a helper that sync-sets state from the effect entry.
+
+**Files changed:** `frontend/src/pages/HomePage.tsx`
+
+**Status:** Fixed
+
+---
+
 ## Quick reference
 
 | Symptom | Command / action |
@@ -369,5 +462,8 @@ Please supply the message using either -m or -F option.
 | Pylance unresolved `supabase.lib.*` / `supabase_auth.*` | Import from top-level `supabase` (`ClientOptions`, `AuthApiError`, …) |
 | Pylance unresolved `fastapi.*` in backend | Select `backend/.venv` interpreter; see `pyrightconfig.json` (§11) |
 | Git commit `vscode-git-*-sock` ENOENT | `git commit -m "message"` in terminal (see §12) |
+| `<<<<<<< HEAD` in source files | Resolve or reset; see §13 |
+| Diverged from `origin/development` after revert | Do not blind `git pull`; see §14 |
+| ESLint `set-state-in-effect` | Async fetch in effect; avoid sync setState at effect start (§15) |
 
 **Last updated:** 2026-06-07
