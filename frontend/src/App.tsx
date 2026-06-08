@@ -3,7 +3,8 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom"
 import { AppShell } from "@/components/AppShell"
 import { ProtectedRoute } from "@/components/ProtectedRoute"
 import { PublicRoute } from "@/components/PublicRoute"
-import { HomePage } from "@/pages/HomePage"
+import { ChatPage } from "@/pages/ChatPage"
+import { DevHealthPage } from "@/pages/DevHealthPage"
 import { LoginPage } from "@/pages/LoginPage"
 import { SignUpPage } from "@/pages/SignUpPage"
 
@@ -35,9 +36,14 @@ export default function App() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<HomePage />} />
+          <Route index element={<Navigate to="/chat" replace />} />
+          <Route path="chat" element={<ChatPage />} />
+          <Route path="chat/:threadId" element={<ChatPage />} />
+          {import.meta.env.DEV ? (
+            <Route path="dev/health" element={<DevHealthPage />} />
+          ) : null}
         </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/chat" replace />} />
       </Routes>
     </BrowserRouter>
   )

@@ -1,11 +1,29 @@
 import { LogOut, MessageSquarePlus } from "lucide-react"
-import { Outlet } from "react-router-dom"
+import { Outlet, useNavigate, useParams } from "react-router-dom"
 
+import { ThreadList } from "@/components/chat/ThreadList"
 import { Button } from "@/components/ui/button"
 import { useSession } from "@/hooks/useSession"
+import { useThreads } from "@/hooks/useThreads"
 
 export function AppShell() {
   const { user, signOut } = useSession()
+  const { threads, loading, creating, createThread, refetch } = useThreads()
+  const { threadId } = useParams()
+  const navigate = useNavigate()
+
+  async function handleCreateThread() {
+    try {
+      const thread = await createThread()
+      navigate(`/chat/${thread.id}`)
+    } catch {
+      // Error state is surfaced via useThreads
+    }
+  }
+
+  function handleSelectThread(id: string) {
+    navigate(`/chat/${id}`)
+  }
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -17,16 +35,26 @@ export function AppShell() {
 
         <div className="flex items-center justify-between px-4 py-3">
           <p className="text-sm font-medium">Conversations</p>
-          <Button variant="ghost" size="icon-sm" disabled aria-label="New chat">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="New chat"
+            disabled={creating}
+            onClick={() => void handleCreateThread()}
+          >
             <MessageSquarePlus />
           </Button>
         </div>
 
-        <div className="flex-1 px-4 py-2">
-          <p className="rounded-lg border border-dashed border-border px-3 py-6 text-center text-sm text-muted-foreground">
-            No conversations yet. Chat threads will appear here once the chat API
-            is wired up.
-          </p>
+        <div className="flex-1 overflow-y-auto px-4 py-2">
+          <ThreadList
+            threads={threads}
+            activeThreadId={threadId}
+            loading={loading}
+            creating={creating}
+            onSelect={handleSelectThread}
+            onCreate={() => void handleCreateThread()}
+          />
         </div>
 
         <div className="border-t border-border px-4 py-4">
@@ -43,8 +71,8 @@ export function AppShell() {
         </div>
       </aside>
 
-      <main className="flex min-w-0 flex-1 flex-col">
-        <header className="border-b border-border px-6 py-4">
+      <main className="flex min-h-screen min-w-0 flex-1 flex-col">
+        <header className="shrink-0 border-b border-border px-6 py-4">
           <h1 className="font-heading text-lg font-medium">Chat</h1>
           <p className="text-sm text-muted-foreground">
             Ask questions about SEC filings once ingestion and retrieval are
@@ -52,9 +80,7 @@ export function AppShell() {
           </p>
         </header>
 
-        <div className="flex flex-1 flex-col items-center justify-center px-6 py-12">
-          <Outlet />
-        </div>
+        <Outlet context={{ refetchThreads: refetch }} />
       </main>
     </div>
   )

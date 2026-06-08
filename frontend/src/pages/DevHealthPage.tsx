@@ -13,7 +13,7 @@ import { ApiError } from "@/lib/http"
 
 type CheckState = "idle" | "loading" | "ok" | "error"
 
-export function HomePage() {
+export function DevHealthPage() {
   const [healthState, setHealthState] = useState<CheckState>("loading")
   const [meState, setMeState] = useState<CheckState>("loading")
   const [healthDetail, setHealthDetail] = useState<string>("")
@@ -73,22 +73,24 @@ export function HomePage() {
   }
 
   return (
-    <Card className="w-full max-w-xl">
-      <CardHeader>
-        <CardTitle>Phase 2 manual pass</CardTitle>
-        <CardDescription>
-          Confirms the browser session reaches the FastAPI backend with your
-          Supabase bearer token.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <StatusRow label="GET /health" state={healthState} detail={healthDetail} />
-        <StatusRow label="GET /me" state={meState} detail={meDetail} />
-        <Button variant="outline" onClick={rerunChecks}>
-          Re-run checks
-        </Button>
-      </CardContent>
-    </Card>
+    <div className="flex flex-1 items-center justify-center px-6 py-12">
+      <Card className="w-full max-w-xl">
+        <CardHeader>
+          <CardTitle>Dev diagnostics</CardTitle>
+          <CardDescription>
+            Confirms the browser session reaches the FastAPI backend with your
+            Supabase bearer token.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <StatusRow label="GET /health" state={healthState} detail={healthDetail} />
+          <StatusRow label="GET /me" state={meState} detail={meDetail} />
+          <Button variant="outline" onClick={rerunChecks}>
+            Re-run checks
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
   )
 }
 

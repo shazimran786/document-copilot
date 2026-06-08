@@ -27,11 +27,19 @@ add-bounds = "exact"
 exclude-newer = "7 days"
 
 [tool.hatch.build.targets.wheel]
-packages = ["app"]
+packages = ["app", "ingest"]
+
+[project.scripts]
+ingest-corpus = "ingest.run:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
 
 
 [dependency-groups]
 dev = [
+    "docling==2.96.1",
     "ipykernel==7.2.0",
     "pytest==9.0.3",
     "ruff==0.15.15",

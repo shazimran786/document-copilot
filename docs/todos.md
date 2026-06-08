@@ -10,11 +10,14 @@ Reference: [architecture.md](architecture.md) · [client-brief.md](client-brief.
 
 ---
 
-## Progress snapshot (2026-06-07)
+## Progress snapshot (2026-06-08)
 
-- **Branch:** Local `development` @ `7cebbb4` — Phase 2 only. **Ahead 2 / behind 14** vs `origin/development` (remote still has the reverted full RAG stack). Do **not** `git pull` without a merge plan; use `git push --force-with-lease` only if you intend to replace remote with Phase 2.
-- **Phase 0–2:** Complete — toolchain, Supabase, schema, auth shell, manual pass verified (dashboard user → sign in → `/health` + `/me` OK → sign out). Public sign-up disabled; create users via **Authentication → Users → Add user** (auto-confirm for dev).
-- **Next phase:** Phase 3 — stubbed chat vertical slice (threads, messages, fake streamed reply).
+- **Branch:** Local `development` — Phase 4 complete (uncommitted). **Do not** blind `git pull` vs `origin/development` (remote still has the reverted full RAG stack).
+- **Phase 0–4:** Complete — toolchain, Supabase, schema, auth shell, stubbed chat, corpus download, Docling conversion, full ingest to Supabase.
+- **Phase 5 (next):** Hybrid retrieval — pgvector + full-text + RRF fusion.
+- **Plan:** [phase-one-implementation-plan.md](../implementation-plan/phase-one-implementation-plan.md) · [phase-two-implementation-plan.md](../implementation-plan/phase-two-implementation-plan.md) · [phase-three-implementation-plan.md](../implementation-plan/phase-three-implementation-plan.md) · [phase-four-implementation-plan.md](../implementation-plan/phase-four-implementation-plan.md)
+- **Corpus (Supabase):** 25 `source_documents`, 7,470 `document_chunks`, 100% embedded.
+- **Ingest issues log:** [backend/ingest/INGESTION_ISSUES.md](../backend/ingest/INGESTION_ISSUES.md)
 - **Windows note:** `corepack enable` needs Administrator — use `npm install -g pnpm` instead.
 
 ---
@@ -36,6 +39,8 @@ Reference: [architecture.md](architecture.md) · [client-brief.md](client-brief.
 
 The schema is the contract between ingestion, retrieval, chat, and the UI. Get it right before building features on top.
 
+**Plan:** [phase-one-implementation-plan.md](../implementation-plan/phase-one-implementation-plan.md)
+
 - [x] `cd backend && uv sync` and add dependencies per [backend-setup.md](guides/backend-setup.md)
 - [x] Create `app/main.py` (FastAPI + CORS + health check `GET /health`)
 - [x] Create `app/config.py` (all env vars; fail fast on missing required values)
@@ -55,6 +60,8 @@ The schema is the contract between ingestion, retrieval, chat, and the UI. Get i
 ## Phase 2 — Frontend scaffold & backend configuration
 
 Thin browser shell plus backend auth wiring. No OpenAI or service-role keys in the client.
+
+**Plan:** [phase-two-implementation-plan.md](../implementation-plan/phase-two-implementation-plan.md)
 
 **Backend configuration**
 
@@ -84,42 +91,72 @@ Thin browser shell plus backend auth wiring. No OpenAI or service-role keys in t
 
 End-to-end chat UX with **no retrieval or LLM** — proves threads, persistence, streaming transport, and UI before corpus work.
 
+**Plan:** [phase-three-implementation-plan.md](../implementation-plan/phase-three-implementation-plan.md)
+
 **Backend (stubbed chat API)**
 
-- [ ] `app/database/chats.py` — typed read/write helpers for threads and messages (user-scoped via Supabase client)
-- [ ] `GET/POST /chat/threads` — list and create threads
-- [ ] `GET /chat/threads/{id}/messages` — message history for a thread
-- [ ] `POST /chat/stream` — AI SDK-compatible streaming events with a **fixed stub reply** (no OpenAI, no retrieval); persist user message + stub assistant message after stream completes
-- [ ] Unit tests: thread ownership, message ordering, stub stream event shape
+- [x] `app/database/chats.py` — typed read/write helpers for threads and messages (user-scoped via Supabase client)
+- [x] `app/chat/schemas.py`, `app/chat/messages.py`, `app/chat/streaming.py`, `app/api/chat.py` — wire models, AI SDK message helpers, stub SSE, routes
+- [x] `GET/POST /chat/threads` — list and create threads
+- [x] `GET /chat/threads/{id}/messages` — message history for a thread
+- [x] `POST /chat/stream` — AI SDK-compatible streaming events with a **fixed stub reply** (no OpenAI, no retrieval); persist user message + stub assistant message after stream completes
+- [x] Unit tests: thread ownership, message ordering, stub stream event shape (`uv run pytest` — 18 passing)
 
 **Frontend (wired chat UI)**
 
-- [ ] Replace Phase 2 home diagnostic with chat-first layout (or demote diagnostics to dev-only)
-- [ ] Thread list: load from backend, create new thread, switch threads
-- [ ] Chat composer + message list (user vs assistant styling, streaming indicator, error states)
-- [ ] Vercel AI SDK `useChat` → `POST /chat/stream` with Supabase bearer token
-- [ ] Empty states: no threads yet, no messages in thread
+- [x] Replace Phase 2 home diagnostic with chat-first layout (or demote diagnostics to dev-only)
+- [x] Thread list: load from backend, create new thread, switch threads
+- [x] Chat composer + message list (user vs assistant styling, streaming indicator, error states)
+- [x] Vercel AI SDK `useChat` → `POST /chat/stream` with Supabase bearer token
+- [x] Empty states: no threads yet, no messages in thread
 
 **Manual pass**
 
-- [ ] Sign in → create thread → send question → see stubbed streamed reply → refresh → history persists → sign out
+- [x] Sign in → create thread → send question → see stubbed streamed reply → refresh → history persists → sign out
 
 ---
 
 ## Phase 4 — Corpus download & ingestion
 
-No retrieval without indexed filings. Run after the chat shell so UI iteration can continue in parallel once ingest scripts exist.
+No retrieval without indexed filings. **Complete 2026-06-08.**
 
-- [ ] Edit `data/download.py`: set `USER_AGENT` to your email (SEC requirement)
-- [ ] `uv run data/download.py` — confirm 10-Ks for AAPL, MSFT, NVDA, AMZN, GOOGL land in `data/downloads/`
-- [ ] Build ingestion pipeline (`backend/ingest/`):
-  - [ ] Parse downloaded HTML → normalized Markdown per filing
-  - [ ] Extract metadata: ticker, company, filing type, fiscal year, accession number, source URL
-  - [ ] Chunk text with stable chunk IDs and page/section metadata
-  - [ ] Embed chunks with configured OpenAI embedding model
-  - [ ] Upsert `source_documents` + `document_chunks` (text, embedding, `tsvector`) into Supabase
-- [ ] Spot-check: query a few chunks in Supabase; confirm metadata and text look correct
-- [ ] Add backend unit tests for chunking and metadata extraction
+**Plan:** [phase-four-implementation-plan.md](../implementation-plan/phase-four-implementation-plan.md) · **Issues log:** [backend/ingest/INGESTION_ISSUES.md](../backend/ingest/INGESTION_ISSUES.md) · **Markdown QA:** [data/markdown-testing-strategy.md](../data/markdown-testing-strategy.md)
+
+**Download (SEC EDGAR)**
+
+- [x] Edit `data/download.py`: set `USER_AGENT` to your email (SEC requirement)
+- [x] `uv run data/download.py` — 10-Ks for AAPL, MSFT, NVDA, AMZN, GOOGL in `data/downloads/`
+- [x] Verify `data/downloads/manifest.json` — accession numbers, source URLs, local paths
+
+**HTML → Markdown (Docling)**
+
+- [x] `data/convert_to_markdown.py` — Docling batch convert; output mirrors `downloads/` under `data/markdown/`
+- [x] `docling==2.96.1` in backend dev deps; `.gitignore` for `/data/markdown/*`
+- [x] Converted 25 HTML filings → 25 Markdown files (`markdown/2021/` … `markdown/2025/`)
+- [ ] Re-run after new downloads: `cd backend && uv run python ../data/convert_to_markdown.py`
+
+**Ingestion pipeline (`backend/ingest/`)**
+
+- [x] `models.py` — typed filing metadata + chunk records (internal, not DB models)
+- [x] `metadata.py` — manifest → fields; resolve Markdown path (`downloads/` → `markdown/`)
+- [x] `chunking.py` — section-aware splits + token-bounded chunks; stable `stable_chunk_id`; `section_label` truncated to 255
+- [x] `embeddings.py` — batch OpenAI embeddings (`text-embedding-3-small`, 1536 dims)
+- [x] `persist.py` — upsert `source_documents` + replace `document_chunks`; retry + batch size 25
+- [x] `run.py` — CLI: `uv run python -m ingest.run` / `uv run ingest-corpus` (idempotent re-run)
+- [x] `INGESTION_ISSUES.md` — errors found and fixed during ingest
+
+**Verification & tests**
+
+- [x] Supabase spot-check: 25 documents, 7,470 chunks, embeddings non-null
+- [x] Unit tests: metadata + chunking (`tests/corpus_ingest/` — 9 tests)
+- [x] Full ingest of corpus completed; re-run is idempotent
+
+**Known ingest fixes (see issues log)**
+
+- [x] MSFT `section_label` varchar(255) overflow → truncate in chunking
+- [x] Transient Supabase disconnects → retry + smaller batch inserts
+- [x] Windows console Unicode in CLI logs → ASCII output
+- [x] `tests/ingest/` package shadowing → renamed to `tests/corpus_ingest/`
 
 ---
 
@@ -208,8 +245,8 @@ From [client-brief.md](client-brief.md) — tick when true in production:
 | ---- | --------------------------------------------------------------------- |
 | 1    | Phase 0–1: Supabase, backend scaffold, schema migrated              |
 | 2    | Phase 2: Auth shell end-to-end *(complete)*                           |
-| 3    | Phase 3: Stubbed chat vertical slice (threads, stream, UI wired)      |
-| 4    | Phase 4–5: Download corpus, ingest, hybrid retrieval working          |
+| 3    | Phase 3: Stubbed chat slice *(complete)*                                |
+| 4    | Phase 4: Download corpus, ingest *(complete)* · Phase 5: hybrid retrieval |
 | 5    | Phase 6: Real streaming agent + grounding (swap out stub)             |
 | 6    | Phase 7–9: Citations UI, hardening, deploy, pilot                    |
 
