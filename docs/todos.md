@@ -2,7 +2,7 @@
 
 Work through these phases in order. Each phase unlocks the next.
 
-**Backend or frontend first?** Start with **shared foundation** (Supabase, env, Python 3.12), then **backend schema** (Phase 1). Next, stand up the **app shell on both sides** — frontend scaffold plus backend auth/CORS (Phase 2) — so you can sign in and iterate on UI while building ingestion and retrieval. Wire the real RAG path only after Phases 3–5.
+**Backend or frontend first?** Start with **shared foundation** (Supabase, env, Python 3.12), then **backend schema** (Phase 1). Next, **auth shell** (Phase 2), then a **stubbed chat vertical slice** (Phase 3) so analysts can click through threads and messages before corpus work. Build **ingestion → retrieval → real agent** in Phases 4–6; polish citations and ship in Phases 7–9.
 
 **North star:** 5 senior analysts use it for a week and report ≥3 hours saved per analyst per week ([client brief](client-brief.md)).
 
@@ -13,10 +13,8 @@ Reference: [architecture.md](architecture.md) · [client-brief.md](client-brief.
 ## Progress snapshot (2026-06-07)
 
 - **Branch:** Local `development` @ `7cebbb4` — Phase 2 only. **Ahead 2 / behind 14** vs `origin/development` (remote still has the reverted full RAG stack). Do **not** `git pull` without a merge plan; use `git push --force-with-lease` only if you intend to replace remote with Phase 2.
-- **Phase 0–1:** Complete — toolchain, Supabase project, env files, Alembic schema migrated.
-- **Phase 2 (almost done):** Backend auth (`GET /me`, JWT via Supabase Auth, sync Supabase clients). Frontend: Tailwind/shadcn, `src/lib/`*, **Sign in | Sign up** tabs (`AuthLayout`), protected routes, app shell, home-page `/health` + `/me` checks. IDE: `pyrightconfig.json` points at `backend/.venv`.
-- **Remaining for Phase 2:** Manual pass only — run backend + frontend locally, sign up → sign in → both checks OK on home page → sign out.
-- **Next phase:** Phase 3 — corpus download and ingestion.
+- **Phase 0–2:** Complete — toolchain, Supabase, schema, auth shell, manual pass verified (dashboard user → sign in → `/health` + `/me` OK → sign out). Public sign-up disabled; create users via **Authentication → Users → Add user** (auto-confirm for dev).
+- **Next phase:** Phase 3 — stubbed chat vertical slice (threads, messages, fake streamed reply).
 - **Windows note:** `corepack enable` needs Administrator — use `npm install -g pnpm` instead.
 
 ---
@@ -73,18 +71,44 @@ Thin browser shell plus backend auth wiring. No OpenAI or service-role keys in t
 - [x] Email sign-in / sign-up pages (Supabase Auth; `/login`, `/signup`, `AuthLayout` tab bar)
 - [x] Protected routes — redirect unauthenticated users to login
 - [x] App shell: sidebar (thread list placeholder), main chat area, sign-out
-- [ ] Manual pass: sign up → sign in → home page shows **OK** for `GET /health` and `GET /me` → sign out
+- [x] Manual pass: create user in Supabase dashboard (sign-up disabled) → sign in → home page shows **OK** for `GET /health` and `GET /me` → sign out
   ```powershell
   # Terminal 1: cd backend && uv run uvicorn app.main:app --reload
   # Terminal 2: cd frontend && pnpm dev
-  # Browser: http://localhost:5173 — use Sign up tab, then Sign in tab
+  # Browser: http://localhost:5173/login — user created via Supabase → Authentication → Users → Add user
   ```
 
 ---
 
-## Phase 3 — Corpus download & ingestion
+## Phase 3 — Chat shell (vertical slice, stubbed)
 
-No retrieval without indexed filings. Run this before the real chat agent.
+End-to-end chat UX with **no retrieval or LLM** — proves threads, persistence, streaming transport, and UI before corpus work.
+
+**Backend (stubbed chat API)**
+
+- [ ] `app/database/chats.py` — typed read/write helpers for threads and messages (user-scoped via Supabase client)
+- [ ] `GET/POST /chat/threads` — list and create threads
+- [ ] `GET /chat/threads/{id}/messages` — message history for a thread
+- [ ] `POST /chat/stream` — AI SDK-compatible streaming events with a **fixed stub reply** (no OpenAI, no retrieval); persist user message + stub assistant message after stream completes
+- [ ] Unit tests: thread ownership, message ordering, stub stream event shape
+
+**Frontend (wired chat UI)**
+
+- [ ] Replace Phase 2 home diagnostic with chat-first layout (or demote diagnostics to dev-only)
+- [ ] Thread list: load from backend, create new thread, switch threads
+- [ ] Chat composer + message list (user vs assistant styling, streaming indicator, error states)
+- [ ] Vercel AI SDK `useChat` → `POST /chat/stream` with Supabase bearer token
+- [ ] Empty states: no threads yet, no messages in thread
+
+**Manual pass**
+
+- [ ] Sign in → create thread → send question → see stubbed streamed reply → refresh → history persists → sign out
+
+---
+
+## Phase 4 — Corpus download & ingestion
+
+No retrieval without indexed filings. Run after the chat shell so UI iteration can continue in parallel once ingest scripts exist.
 
 - [ ] Edit `data/download.py`: set `USER_AGENT` to your email (SEC requirement)
 - [ ] `uv run data/download.py` — confirm 10-Ks for AAPL, MSFT, NVDA, AMZN, GOOGL land in `data/downloads/`
@@ -99,7 +123,7 @@ No retrieval without indexed filings. Run this before the real chat agent.
 
 ---
 
-## Phase 4 — Retrieval (hybrid search)
+## Phase 5 — Retrieval (hybrid search)
 
 Trust starts here: the LLM only sees what retrieval returns.
 
@@ -112,41 +136,34 @@ Trust starts here: the LLM only sees what retrieval returns.
 
 ---
 
-## Phase 5 — LLM agent, grounding & chat API
+## Phase 6 — LLM agent, grounding & real chat stream
 
-Backend owns the full turn: retrieve → generate → validate citations → persist → stream.
+Replace the Phase 3 stub with the real turn: retrieve → generate → validate citations → persist → stream.
 
-- [ ] `app/database/chats.py` + `documents.py` — typed read/write helpers
+- [ ] `app/database/documents.py` — typed read helpers for corpus metadata
 - [ ] `app/assistant/` — PydanticAI agent with `DocumentAgentDeps`, `GroundedAnswer`, `instructions.md`
 - [ ] Agent tools (bounded): `search_filings`, `read_chunk`, `read_surrounding_chunks`
 - [ ] `app/grounding/validator.py` — every citation maps to a retrieved passage; fail closed on violation
 - [ ] `app/chat/orchestrator.py` — one turn end-to-end
-- [ ] `app/chat/streaming.py` — AI SDK-compatible streaming events
-- [ ] API routes:
-  - [ ] `GET/POST /chat/threads` — list and create threads (user-scoped)
-  - [ ] `GET /chat/threads/{id}/messages` — message history
-  - [ ] `POST /chat/stream` — streaming assistant response
-- [ ] Persist user message, assistant message, and citations after successful run
+- [ ] `app/chat/streaming.py` — wire real agent into existing `POST /chat/stream` (same AI SDK event shape as stub)
+- [ ] Persist assistant message and `message_citations` after successful run
 - [ ] Unit tests: citation validation, grounding enforcement, message conversion
 - [ ] Run example analyst questions from [client-brief.md](client-brief.md) via API or script; confirm cited answers or honest "not enough evidence"
 
 ---
 
-## Phase 6 — Chat UI & citations
+## Phase 7 — Citations UI & analyst polish
 
-This is what analysts touch daily. Polish here drives pilot adoption.
+This is what analysts touch daily once answers are real. Polish here drives pilot adoption.
 
-- [ ] Thread list: load from backend, create new thread, switch threads
-- [ ] Chat page with Vercel AI SDK `useChat` → `POST /chat/stream` with Supabase bearer token
-- [ ] Message list: user vs assistant styling, streaming indicator, error states
 - [ ] Citation UI: filing name, company, date, page/section per claim
 - [ ] Source passage panel: expandable excerpt so analyst can verify in one click
-- [ ] Empty state and "insufficient evidence" messaging (matches trust contract)
-- [ ] Manual pass: sign in → ask → see streamed answer → click citation → read passage
+- [ ] "Insufficient evidence" / "not in corpus" messaging (matches trust contract)
+- [ ] Manual pass: sign in → ask real question → see streamed cited answer → click citation → read passage
 
 ---
 
-## Phase 7 — Pilot readiness
+## Phase 8 — Pilot readiness
 
 - [ ] Structured logging on backend (`structlog`) for auth, retrieval, and LLM failures
 - [ ] Run full example-question set from client brief; note gaps and fix retrieval or prompts
@@ -157,7 +174,7 @@ This is what analysts touch daily. Polish here drives pilot adoption.
 
 ---
 
-## Phase 8 — Deploy (Railway)
+## Phase 9 — Deploy (Railway)
 
 - [ ] Railway: backend service (`uvicorn app.main:app`)
 - [ ] Railway: frontend service (Vite static build)
@@ -187,13 +204,14 @@ From [client-brief.md](client-brief.md) — tick when true in production:
 ## Suggested weekly focus (if building solo)
 
 
-| Week | Focus                                                                            |
-| ---- | -------------------------------------------------------------------------------- |
-| 1    | Phase 0–1: Supabase, backend scaffold, schema migrated                           |
-| 2    | Phase 2: Auth shell end-to-end *(code done — manual pass + tick checkbox above)* |
-| 3    | Phase 3–4: Download corpus, ingest, hybrid retrieval working                     |
-| 4    | Phase 5: Streaming chat API with grounded agent                                  |
-| 5    | Phase 6–8: Chat UI + citations, hardening, deploy, pilot                         |
+| Week | Focus                                                                 |
+| ---- | --------------------------------------------------------------------- |
+| 1    | Phase 0–1: Supabase, backend scaffold, schema migrated              |
+| 2    | Phase 2: Auth shell end-to-end *(complete)*                           |
+| 3    | Phase 3: Stubbed chat vertical slice (threads, stream, UI wired)      |
+| 4    | Phase 4–5: Download corpus, ingest, hybrid retrieval working          |
+| 5    | Phase 6: Real streaming agent + grounding (swap out stub)             |
+| 6    | Phase 7–9: Citations UI, hardening, deploy, pilot                    |
 
 
-Adjust pace as needed; **do not skip ingestion/retrieval before wiring the real agent.**
+Adjust pace as needed; **do not wire the real agent until ingestion and retrieval are working** (Phases 4–5 before Phase 6).
