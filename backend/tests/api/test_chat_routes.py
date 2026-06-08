@@ -8,6 +8,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.auth.dependencies import get_current_user, get_user_scoped_supabase
+from app.assistant.outputs import GroundedAnswer
+from app.chat.orchestrator import TurnResult
 from app.chat.schemas import MessageResponse, ThreadResponse
 from app import api as api_pkg
 from app.main import app
@@ -141,10 +143,11 @@ def test_post_stream_returns_ai_sdk_sse(
         content_text,
         message_json,
         sequence_number,
+        message_id=None,
     ):
         inserted.append((role, sequence_number))
         return MessageResponse(
-            id=uuid4(),
+            id=message_id or uuid4(),
             thread_id=thread_id,
             role=role,
             content_text=content_text,
@@ -153,11 +156,39 @@ def test_post_stream_returns_ai_sdk_sse(
             message_json=message_json,
         )
 
+    async def fake_stream_agent_turn(**kwargs):
+        from app.chat.messages import new_message_id
+        from app.chat.streaming import format_sse_event
+
+        message_id = new_message_id()
+        text_id = "text_test"
+        yield format_sse_event({"type": "start", "messageId": message_id})
+        yield format_sse_event({"type": "text-start", "id": text_id})
+        yield format_sse_event({"type": "text-delta", "id": text_id, "delta": "Hello"})
+        yield format_sse_event({"type": "text-end", "id": text_id})
+        yield format_sse_event({"type": "finish"})
+        yield format_sse_event("[DONE]")
+        if kwargs.get("on_complete") is not None:
+            kwargs["on_complete"](
+                TurnResult(
+                    answer=GroundedAnswer(
+                        answer="Hello",
+                        citations=[],
+                        insufficient_evidence=True,
+                    ),
+                    passages={},
+                    message_id=message_id,
+                    message_uuid=uuid4(),
+                )
+            )
+
     monkeypatch.setattr(api_pkg.chat, "get_thread", lambda client, tid: thread_response)
     monkeypatch.setattr(api_pkg.chat, "next_sequence_number", lambda client, tid: 0)
     monkeypatch.setattr(api_pkg.chat, "insert_message", fake_insert_message)
+    monkeypatch.setattr(api_pkg.chat, "insert_citations", lambda *args, **kwargs: None)
     monkeypatch.setattr(api_pkg.chat, "maybe_set_thread_title", lambda *args, **kwargs: None)
     monkeypatch.setattr(api_pkg.chat, "touch_thread", lambda client, tid: None)
+    monkeypatch.setattr(api_pkg.chat, "stream_agent_turn", fake_stream_agent_turn)
 
     with authed_client.stream(
         "POST",

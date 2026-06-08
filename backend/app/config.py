@@ -24,6 +24,16 @@ class Settings(BaseSettings):
     openai_api_key: str
     openai_embedding_model: str = "text-embedding-3-small"
     openai_embedding_dimensions: int = 1536
+    openai_chat_model: str = "gpt-4o-mini"
+    openai_chat_timeout_seconds: int = 120
+    agent_max_tool_calls: int = 5
+
+    # Retrieval (hybrid search)
+    retrieval_semantic_top_k: int = 50
+    retrieval_fulltext_top_k: int = 50
+    retrieval_fusion_top_k: int = 10
+    retrieval_rrf_k: int = 60
+    retrieval_neighbor_window: int = 1
 
     # Server
     allowed_origins: Annotated[list[str], NoDecode] = ["http://localhost:5173"]

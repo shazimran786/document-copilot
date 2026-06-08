@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Literal
 from uuid import UUID, uuid4
@@ -18,6 +19,14 @@ MAX_THREAD_TITLE_LENGTH = 60
 
 class ChatPersistenceError(Exception):
     """Raised when Supabase chat persistence fails."""
+
+
+@dataclass(frozen=True)
+class CitationRecord:
+    chunk_id: UUID
+    claim_index: int
+    excerpt: str
+    citation_metadata: dict[str, Any]
 
 
 def _raise_for_response_error(response: Any, action: str) -> None:
@@ -115,9 +124,11 @@ def insert_message(
     content_text: str,
     message_json: dict[str, Any],
     sequence_number: int,
+    *,
+    message_id: UUID | None = None,
 ) -> MessageResponse:
     payload = {
-        "id": str(uuid4()),
+        "id": str(message_id or uuid4()),
         "thread_id": str(thread_id),
         "role": role,
         "content_text": content_text,
@@ -170,3 +181,30 @@ def maybe_set_thread_title(
         .execute()
     )
     _raise_for_response_error(response, "set chat thread title")
+
+
+def insert_citations(
+    client: Client,
+    message_id: UUID,
+    citations: list[CitationRecord],
+) -> None:
+    if not citations:
+        return
+
+    payload = [
+        {
+            "id": str(uuid4()),
+            "message_id": str(message_id),
+            "chunk_id": str(citation.chunk_id),
+            "claim_index": citation.claim_index,
+            "excerpt": citation.excerpt,
+            "citation_metadata": citation.citation_metadata,
+        }
+        for citation in citations
+    ]
+    try:
+        response = client.table("message_citations").insert(payload).execute()
+    except APIError as exc:
+        logger.exception("Supabase insert message citations failed")
+        raise ChatPersistenceError("Failed to insert message citations.") from exc
+    _raise_for_response_error(response, "insert message citations")

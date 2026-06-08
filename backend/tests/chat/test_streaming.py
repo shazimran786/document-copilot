@@ -3,12 +3,12 @@ from __future__ import annotations
 import asyncio
 import json
 
+from app.chat.messages import split_text_deltas
 from app.chat.streaming import (
     AI_UI_MESSAGE_STREAM_HEADER,
     STREAM_HEADERS,
     build_stub_reply,
     format_sse_event,
-    split_text_deltas,
     stub_stream_events,
 )
 

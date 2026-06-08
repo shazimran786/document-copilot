@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from typing import Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 
+from app.assistant.outputs import Citation
 from app.chat.schemas import MessageResponse
+from app.retrieval.schemas import SourcePassage
 
 
 def extract_latest_user_text(messages: list[dict[str, Any]]) -> str:
@@ -48,13 +50,82 @@ def to_ui_message(row: MessageResponse) -> dict[str, Any]:
     }
 
 
-def build_assistant_ui_message(message_id: str, text: str) -> dict[str, Any]:
+def build_citation_db_metadata(
+    citation: Citation,
+    passage: SourcePassage,
+) -> dict[str, Any]:
     return {
+        "stable_chunk_id": citation.stable_chunk_id,
+        "ticker": passage.document.ticker,
+        "company_name": passage.document.company_name,
+        "filing_type": passage.document.filing_type,
+        "fiscal_year": passage.document.fiscal_year,
+        "section_label": passage.section_label,
+        "page_label": passage.page_label,
+        "source_url": passage.document.source_url,
+        "accession_number": passage.document.accession_number,
+    }
+
+
+def build_citation_ui_metadata(
+    citation: Citation,
+    passage: SourcePassage,
+) -> dict[str, Any]:
+    return {
+        "chunkId": str(citation.chunk_id),
+        "stableChunkId": citation.stable_chunk_id,
+        "claimIndex": citation.claim_index,
+        "excerpt": citation.excerpt,
+        "ticker": passage.document.ticker,
+        "companyName": passage.document.company_name,
+        "filingType": passage.document.filing_type,
+        "fiscalYear": passage.document.fiscal_year,
+        "sectionLabel": passage.section_label,
+        "pageLabel": passage.page_label,
+        "sourceUrl": passage.document.source_url,
+        "accessionNumber": passage.document.accession_number,
+    }
+
+
+def build_assistant_ui_message(
+    message_id: str,
+    text: str,
+    *,
+    citations: list[Citation] | None = None,
+    passages: dict[UUID, SourcePassage] | None = None,
+) -> dict[str, Any]:
+    message: dict[str, Any] = {
         "id": message_id,
         "role": "assistant",
         "parts": [{"type": "text", "text": text}],
     }
+    if citations and passages:
+        message["metadata"] = {
+            "citations": [
+                build_citation_ui_metadata(
+                    citation,
+                    passages[citation.chunk_id],
+                )
+                for citation in citations
+                if citation.chunk_id in passages
+            ]
+        }
+    return message
 
 
 def new_message_id() -> str:
     return f"msg_{uuid4().hex}"
+
+
+def split_text_deltas(text: str) -> list[str]:
+    words = text.split(" ")
+    if not words:
+        return [""]
+
+    deltas: list[str] = []
+    for index, word in enumerate(words):
+        if index == 0:
+            deltas.append(word)
+        else:
+            deltas.append(f" {word}")
+    return deltas

@@ -12,12 +12,14 @@ Reference: [architecture.md](architecture.md) · [client-brief.md](client-brief.
 
 ## Progress snapshot (2026-06-08)
 
-- **Branch:** Local `development` — Phase 4 complete (uncommitted). **Do not** blind `git pull` vs `origin/development` (remote still has the reverted full RAG stack).
+- **Branch:** Local `development` — Phases 4–6 complete (uncommitted). **Do not** blind `git pull` vs `origin/development` (remote still has the reverted full RAG stack).
 - **Phase 0–4:** Complete — toolchain, Supabase, schema, auth shell, stubbed chat, corpus download, Docling conversion, full ingest to Supabase.
-- **Phase 5 (next):** Hybrid retrieval — pgvector + full-text + RRF fusion.
-- **Plan:** [phase-one-implementation-plan.md](../implementation-plan/phase-one-implementation-plan.md) · [phase-two-implementation-plan.md](../implementation-plan/phase-two-implementation-plan.md) · [phase-three-implementation-plan.md](../implementation-plan/phase-three-implementation-plan.md) · [phase-four-implementation-plan.md](../implementation-plan/phase-four-implementation-plan.md)
+- **Phase 5:** Complete — hybrid retrieval (pgvector + full-text + RRF fusion).
+- **Phase 6:** Complete — PydanticAI agent, grounding validator, real `POST /chat/stream`. **Next:** Phase 7 citations UI.
+- **Tests:** `uv run pytest -v` — 45 passing (grounding, assistant, chat, retrieval, ingest, API).
+- **Plans:** [phase-one](../implementation-plan/phase-one-implementation-plan.md) · [phase-two](../implementation-plan/phase-two-implementation-plan.md) · [phase-three](../implementation-plan/phase-three-implementation-plan.md) · [phase-four](../implementation-plan/phase-four-implementation-plan.md) · [phase-five](../implementation-plan/phase-five-implementation-plan.md) · [phase-five-testing](../implementation-plan/phase-five-testing-plan.md) · [phase-six](../implementation-plan/phase-six-implementation-plan.md) · [phase-six-testing](../implementation-plan/phase-six-testing-plan.md)
+- **Issues logs:** [INGESTION_ISSUES.md](../backend/ingest/INGESTION_ISSUES.md) (Phase 4) · [phase-six-implementation-issues.md](../implementation-plan/phase-six-implementation-issues.md) (Phase 6)
 - **Corpus (Supabase):** 25 `source_documents`, 7,470 `document_chunks`, 100% embedded.
-- **Ingest issues log:** [backend/ingest/INGESTION_ISSUES.md](../backend/ingest/INGESTION_ISSUES.md)
 - **Windows note:** `corepack enable` needs Administrator — use `npm install -g pnpm` instead.
 
 ---
@@ -164,28 +166,53 @@ No retrieval without indexed filings. **Complete 2026-06-08.**
 
 Trust starts here: the LLM only sees what retrieval returns.
 
-- [ ] `app/retrieval/queries.py` — pgvector semantic search over `document_chunks`
-- [ ] `app/retrieval/queries.py` — Postgres full-text search over `search_vector`
-- [ ] `app/retrieval/fusion.py` — Reciprocal Rank Fusion in Python
-- [ ] `app/retrieval/retriever.py` — fuse, fetch passages + neighboring context + document metadata
-- [ ] Manual smoke test: fixed queries (e.g. "AWS operating margin", "NVIDIA data center demand") return sensible chunks
-- [ ] Unit tests for fusion ranking and passage assembly
+**Plan:** [phase-five-implementation-plan.md](../implementation-plan/phase-five-implementation-plan.md) · **Testing:** [phase-five-testing-plan.md](../implementation-plan/phase-five-testing-plan.md)
+
+- [x] `app/retrieval/queries.py` — pgvector semantic search over `document_chunks`
+- [x] `app/retrieval/queries.py` — Postgres full-text search over `search_vector`
+- [x] `app/retrieval/fusion.py` — Reciprocal Rank Fusion in Python
+- [x] `app/retrieval/retriever.py` — fuse, fetch passages + neighboring context + document metadata
+- [x] Manual smoke test: fixed queries (e.g. "AWS operating margin", "NVIDIA data center demand") return sensible chunks
+- [x] Unit tests for fusion ranking and passage assembly
 
 ---
 
 ## Phase 6 — LLM agent, grounding & real chat stream
 
-Replace the Phase 3 stub with the real turn: retrieve → generate → validate citations → persist → stream.
+Replace the Phase 3 stub with the real turn: retrieve → generate → validate citations → persist → stream. **Complete 2026-06-08.**
 
-- [ ] `app/database/documents.py` — typed read helpers for corpus metadata
-- [ ] `app/assistant/` — PydanticAI agent with `DocumentAgentDeps`, `GroundedAnswer`, `instructions.md`
-- [ ] Agent tools (bounded): `search_filings`, `read_chunk`, `read_surrounding_chunks`
-- [ ] `app/grounding/validator.py` — every citation maps to a retrieved passage; fail closed on violation
-- [ ] `app/chat/orchestrator.py` — one turn end-to-end
-- [ ] `app/chat/streaming.py` — wire real agent into existing `POST /chat/stream` (same AI SDK event shape as stub)
-- [ ] Persist assistant message and `message_citations` after successful run
-- [ ] Unit tests: citation validation, grounding enforcement, message conversion
-- [ ] Run example analyst questions from [client-brief.md](client-brief.md) via API or script; confirm cited answers or honest "not enough evidence"
+**Plan:** [phase-six-implementation-plan.md](../implementation-plan/phase-six-implementation-plan.md) · **Testing:** [phase-six-testing-plan.md](../implementation-plan/phase-six-testing-plan.md) · **Issues log:** [phase-six-implementation-issues.md](../implementation-plan/phase-six-implementation-issues.md)
+
+**Assistant & grounding**
+
+- [x] `app/config.py` — `openai_chat_model`, `openai_chat_timeout_seconds`, `agent_max_tool_calls`
+- [x] `app/assistant/` — PydanticAI agent with `DocumentAgentDeps`, `GroundedAnswer`, `instructions.md`
+- [x] Agent tools (bounded): `search_filings`, `read_chunk`, `read_surrounding_chunks`
+- [x] `app/grounding/validator.py` — every citation maps to a retrieved passage; fail closed on violation
+- [x] `app/database/documents.py` — chunk lookup helpers for agent tools (`fetch_chunk_by_stable_id`, neighbors)
+
+**Orchestration & API**
+
+- [x] `app/chat/orchestrator.py` — one turn: retrieve → `agent.run()` → validate → word deltas
+- [x] `app/chat/streaming.py` — wire real agent into `POST /chat/stream` (same AI SDK event shape as stub)
+- [x] `app/api/chat.py` — stub replaced; persist assistant message + `message_citations` on successful grounding
+- [x] `app/database/chats.py` — `insert_citations()`; optional `message_id` on `insert_message`
+- [x] Grounding failure UX: safe fallback message streamed; no `message_citations` rows (not HTTP 502)
+
+**Verification & tests**
+
+- [x] Unit tests: grounding validator, `GroundedAnswer`/`Citation`, orchestrator mock, citation metadata shape (`tests/grounding/`, `tests/assistant/`, `tests/chat/`)
+- [x] API regression: `test_post_stream_returns_ai_sdk_sse` mocks `stream_agent_turn` (no live OpenAI in CI)
+- [x] `uv run pytest -v` — 45 tests passing
+- [x] `uv run python scripts/smoke_agent.py` — client-brief queries return cited answers or honest refusal
+- [x] `phase-six-implementation-issues.md` — errors found and fixed during implementation
+
+**Known Phase 6 notes (see issues log)**
+
+- [x] Structured `GroundedAnswer` incompatible with `stream_text()` → `agent.run()` + post-hoc word deltas
+- [x] OpenAI key from `settings` via explicit `OpenAIProvider` (not raw env alone)
+- [ ] Optional: wire `openai_chat_timeout_seconds` and `agent_max_tool_calls` into Agent settings
+- [ ] Optional: loosen excerpt grounding for table-heavy Docling chunks if fallback rate is too high
 
 ---
 
@@ -246,8 +273,8 @@ From [client-brief.md](client-brief.md) — tick when true in production:
 | 1    | Phase 0–1: Supabase, backend scaffold, schema migrated              |
 | 2    | Phase 2: Auth shell end-to-end *(complete)*                           |
 | 3    | Phase 3: Stubbed chat slice *(complete)*                                |
-| 4    | Phase 4: Download corpus, ingest *(complete)* · Phase 5: hybrid retrieval |
-| 5    | Phase 6: Real streaming agent + grounding (swap out stub)             |
+| 4    | Phase 4: Download corpus, ingest *(complete)* · Phase 5: hybrid retrieval *(complete)* |
+| 5    | Phase 6: Real streaming agent + grounding *(complete)*               |
 | 6    | Phase 7–9: Citations UI, hardening, deploy, pilot                    |
 
 
