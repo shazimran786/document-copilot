@@ -16,11 +16,14 @@ Reference: [architecture.md](architecture.md) · [client-brief.md](client-brief.
 - **Phase 0–4:** Complete — toolchain, Supabase, schema, auth shell, stubbed chat, corpus download, Docling conversion, full ingest to Supabase.
 - **Phase 5:** Complete — hybrid retrieval (pgvector + full-text + RRF fusion).
 - **Phase 6:** Complete — PydanticAI agent, grounding validator, real `POST /chat/stream`.
-- **Phase 7:** Code complete — citation chips, passage panel, trust banners, post-stream metadata hydration. **Next:** manual browser pass (MT-1/MT-2), then Phase 8 pilot readiness.
-- **Tests:** `uv run pytest -v` — 47 passing (grounding, assistant, chat, retrieval, ingest, API).
-- **Plans:** [phase-one](../implementation-plan/phase-one-implementation-plan.md) · [phase-two](../implementation-plan/phase-two-implementation-plan.md) · [phase-three](../implementation-plan/phase-three-implementation-plan.md) · [phase-four](../implementation-plan/phase-four-implementation-plan.md) · [phase-five](../implementation-plan/phase-five-implementation-plan.md) · [phase-five-testing](../implementation-plan/phase-five-testing-plan.md) · [phase-six](../implementation-plan/phase-six-implementation-plan.md) · [phase-six-testing](../implementation-plan/phase-six-testing-plan.md) · [phase-seven](../implementation-plan/phase-seven-implementation-plan.md) · [phase-seven-testing](../implementation-plan/phase-seven-testing-plan.md)
-- **Issues logs:** [INGESTION_ISSUES.md](../backend/ingest/INGESTION_ISSUES.md) (Phase 4) · [phase-six-implementation-issues.md](../implementation-plan/phase-six-implementation-issues.md) (Phase 6)
+- **Phase 7:** Code complete — citation chips, passage panel, trust banners, post-stream metadata hydration, response-time label, grounding Sprint A fixes. **Next:** manual browser pass (MT-1/MT-2), then Phase 8 pilot readiness.
+- **Tests:** `uv run pytest -v` — **50** passing (grounding, assistant, chat, retrieval, ingest, API).
+- **Plans:** [phase-one](../implementation-plan/phase-one-implementation-plan.md) · [phase-two](../implementation-plan/phase-two-implementation-plan.md) · [phase-three](../implementation-plan/phase-three-implementation-plan.md) · [phase-four](../implementation-plan/phase-four-implementation-plan.md) · [phase-five](../implementation-plan/phase-five-implementation-plan.md) · [phase-five-testing](../implementation-plan/phase-five-testing-plan.md) · [phase-six](../implementation-plan/phase-six-implementation-plan.md) · [phase-six-testing](../implementation-plan/phase-six-testing-plan.md) · [phase-seven](../implementation-plan/phase-seven-implementation-plan.md) · [phase-seven-testing](../implementation-plan/phase-seven-testing-plan.md) · [phase-seven-fix](../implementation-plan/phase-seven-fix.md) · [phase-eight](../implementation-plan/phase-eight-implementation-plan.md) · [phase-eight-testing](../implementation-plan/phase-eight-testing-plan.md)
+- **Issues logs:** [INGESTION_ISSUES.md](../backend/ingest/INGESTION_ISSUES.md) (Phase 4) · [phase-six-implementation-issues.md](../implementation-plan/phase-six-implementation-issues.md) (Phase 6) · [phase-seven-implementation-issues.md](../implementation-plan/phase-seven-implementation-issues.md) (Phase 7)
+- **Docs added:** [backend/app/retrieval/README.md](../backend/app/retrieval/README.md) · [backend/ingest/README.md](../backend/ingest/README.md) · [backend/scripts/README.md](../backend/scripts/README.md) · [analyst-evaluation-question-bank.md](../implementation-plan/analyst-evaluation-question-bank.md) · [corpus-vs-openai.md](guides/general-questions/corpus-vs-openai.md)
+- **Evaluation:** [pilot-evaluation-log.md](../implementation-plan/pilot-evaluation-log.md) — template ready for Phase 8 runs
 - **Corpus (Supabase):** 25 `source_documents`, 7,470 `document_chunks`, 100% embedded.
+- **Known gaps (Phase 8):** `structlog` not wired; agent timeout/limits not wired; `pnpm build` TS5101; root README “Running locally” stub; no true token streaming during agent run (long “dots only” wait).
 - **Windows note:** `corepack enable` needs Administrator — use `npm install -g pnpm` instead.
 
 ---
@@ -212,8 +215,9 @@ Replace the Phase 3 stub with the real turn: retrieve → generate → validate 
 
 - [x] Structured `GroundedAnswer` incompatible with `stream_text()` → `agent.run()` + post-hoc word deltas
 - [x] OpenAI key from `settings` via explicit `OpenAIProvider` (not raw env alone)
-- [ ] Optional: wire `openai_chat_timeout_seconds` and `agent_max_tool_calls` into Agent settings
-- [ ] Optional: loosen excerpt grounding for table-heavy Docling chunks if fallback rate is too high
+- [ ] Wire `openai_chat_timeout_seconds` and `agent_max_tool_calls` into Agent settings (Phase 8)
+- [x] Partial: excerpt grounding tolerance for table-heavy Docling chunks + accession-prefix stable IDs ([phase-seven-fix.md](../implementation-plan/phase-seven-fix.md))
+- [x] Partial: strip citations when `insufficient_evidence` (`orchestrator._normalize_agent_answer`)
 
 ---
 
@@ -221,23 +225,61 @@ Replace the Phase 3 stub with the real turn: retrieve → generate → validate 
 
 This is what analysts touch daily once answers are real. Polish here drives pilot adoption.
 
-**Plan:** [phase-seven-implementation-plan.md](../implementation-plan/phase-seven-implementation-plan.md) · **Testing:** [phase-seven-testing-plan.md](../implementation-plan/phase-seven-testing-plan.md)
+**Plan:** [phase-seven-implementation-plan.md](../implementation-plan/phase-seven-implementation-plan.md) · **Testing:** [phase-seven-testing-plan.md](../implementation-plan/phase-seven-testing-plan.md) · **Fix guide:** [phase-seven-fix.md](../implementation-plan/phase-seven-fix.md) · **Issues:** [phase-seven-implementation-issues.md](../implementation-plan/phase-seven-implementation-issues.md)
 
-- [x] Citation UI: filing name, company, date, page/section per claim
-- [x] Source passage panel: expandable excerpt so analyst can verify in one click
-- [x] "Insufficient evidence" / "not in corpus" messaging (matches trust contract)
-- [ ] Manual pass: sign in → ask real question → see streamed cited answer → click citation → read passage
+**Backend**
+
+- [x] `build_assistant_ui_message` — `passageText`, `insufficientEvidence`, `validationFailed` in `message_json.metadata`
+- [x] Wire flags through `streaming.py` and `api/chat.py` post-stream hydration
+
+**Frontend**
+
+- [x] Citation UI: filing name, company, date, page/section per claim (`CitationChip`, `CitationChipList`)
+- [x] Source passage panel: expandable excerpt so analyst can verify in one click (`SourcePassagePanel`)
+- [x] "Insufficient evidence" / "not in corpus" messaging (`TrustStatusBanner`; matches trust contract)
+- [x] Hydration error banner + retry when metadata fetch fails (`ChatPage`)
+- [x] Response time label on assistant bubbles (session-only; not persisted to DB)
+
+**Grounding fixes (Sprint A)**
+
+- [x] Validator: accession-prefix `stable_chunk_id` tolerance; table/punctuation excerpt normalization
+- [x] Instructions: verbatim ID/excerpt rules (`app/assistant/instructions.md`)
+- [x] Unit tests: +3 grounding/orchestrator tests (50 total)
+
+**Manual pass**
+
+- [ ] Sign in → ask real question → see streamed cited answer → click citation → read passage → refresh persists
 
 ---
 
 ## Phase 8 — Pilot readiness
 
-- [ ] Structured logging on backend (`structlog`) for auth, retrieval, and LLM failures
+Make the app observable, documented, and trust-validated before Railway deploy (Phase 9).
+
+**Plan:** [phase-eight-implementation-plan.md](../implementation-plan/phase-eight-implementation-plan.md) · **Testing:** [phase-eight-testing-plan.md](../implementation-plan/phase-eight-testing-plan.md) · **Evaluation log:** [pilot-evaluation-log.md](../implementation-plan/pilot-evaluation-log.md) · **Question bank:** [analyst-evaluation-question-bank.md](../implementation-plan/analyst-evaluation-question-bank.md)
+
+**Gate**
+
+- [ ] Complete Phase 7 manual pass (MT-P8-1)
+
+**Observability & agent hardening**
+
+- [ ] Structured logging on backend (`structlog`) — auth, retrieval, agent turn, grounding outcome
+- [ ] Wire `openai_chat_timeout_seconds` and `agent_max_tool_calls` from config
+- [ ] Long-turn UX: progress copy after ~10s (not frozen “dots only”)
+
+**Trust validation**
+
+- [ ] Quick smoke: 5 questions from analyst question bank (record in evaluation log)
 - [ ] Run full example-question set from client brief; note gaps and fix retrieval or prompts
 - [ ] Confirm bot refuses to infer beyond filings (e.g. generative-AI margin question #10)
 - [ ] Confirm no hallucinated citations under deliberate stress questions
+
+**Documentation & build**
+
 - [ ] README "Running locally" section: exact commands for backend + frontend + ingest
-- [ ] Short internal runbook for re-ingesting new filings
+- [ ] Short internal runbook for re-ingesting new filings (`docs/guides/re-ingest-runbook.md`)
+- [ ] `pnpm build` green (fix TS5101 `baseUrl` deprecation)
 
 ---
 
@@ -278,7 +320,8 @@ From [client-brief.md](client-brief.md) — tick when true in production:
 | 3    | Phase 3: Stubbed chat slice *(complete)*                                |
 | 4    | Phase 4: Download corpus, ingest *(complete)* · Phase 5: hybrid retrieval *(complete)* |
 | 5    | Phase 6: Real streaming agent + grounding *(complete)*               |
-| 6    | Phase 7: Citations UI *(code complete)* · Phase 8–9: hardening, deploy, pilot |
+| 6    | Phase 7: Citations UI *(code complete; manual pass pending)* · Phase 8: pilot readiness |
+| 7    | Phase 9: Railway deploy + analyst pilot |
 
 
 Adjust pace as needed; **do not wire the real agent until ingestion and retrieval are working** (Phases 4–5 before Phase 6).
