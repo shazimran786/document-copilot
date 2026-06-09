@@ -5,7 +5,11 @@ from uuid import uuid4
 import pytest
 
 from app.assistant.outputs import Citation, GroundedAnswer
-from app.grounding.validator import GroundingValidationError, GroundingValidator
+from app.grounding.validator import (
+    GroundingValidationError,
+    GroundingValidator,
+    _words_grounded_in_order,
+)
 from app.retrieval.schemas import DocumentSummary, SourcePassage
 
 
@@ -135,6 +139,37 @@ def test_validator_accepts_excerpt_with_table_pipe_normalization() -> None:
                 stable_chunk_id="0001045810-23-000017:10",
                 claim_index=0,
                 excerpt="Demand drivers remained strong",
+            )
+        ],
+    )
+
+    GroundingValidator().validate(answer, {chunk_id: passage})
+
+
+def test_words_grounded_in_order_skips_missing_words_without_poisoning_search() -> None:
+    passage = (
+        "revenue increased sharply while operating margins expanded during the fiscal year"
+    )
+    excerpt = "revenue phantom increased sharply operating margins expanded fiscal"
+
+    assert _words_grounded_in_order(excerpt, passage) is True
+
+
+def test_validator_accepts_excerpt_via_word_order_fallback_with_gaps() -> None:
+    chunk_id = uuid4()
+    passage = _passage(
+        chunk_id,
+        "acc:2",
+        "revenue increased sharply while operating margins expanded during the fiscal year",
+    )
+    answer = GroundedAnswer(
+        answer="Revenue and margins expanded.",
+        citations=[
+            Citation(
+                chunk_id=chunk_id,
+                stable_chunk_id="acc:2",
+                claim_index=0,
+                excerpt="revenue phantom increased sharply operating margins expanded fiscal",
             )
         ],
     )

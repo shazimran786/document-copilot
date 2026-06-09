@@ -41,12 +41,15 @@ def _words_grounded_in_order(excerpt: str, passage_text: str) -> bool:
     passage_index = 0
     matched = 0
     for word in excerpt_words:
-        while passage_index < len(passage_words):
-            if passage_words[passage_index] == word:
-                matched += 1
-                passage_index += 1
+        found_at = None
+        for idx in range(passage_index, len(passage_words)):
+            if passage_words[idx] == word:
+                found_at = idx
                 break
-            passage_index += 1
+        if found_at is None:
+            continue
+        matched += 1
+        passage_index = found_at + 1
 
     required = max(4, int(len(excerpt_words) * 0.75))
     return matched >= required
