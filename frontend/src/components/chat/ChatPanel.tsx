@@ -77,7 +77,9 @@ export function ChatPanel({
   }, [status, messages, onResponseTimeRecorded])
 
   useEffect(() => {
-    if (!isBusy || streamStartedAtRef.current === null) {
+    const streamingOrSubmitted =
+      status === "streaming" || status === "submitted"
+    if (!streamingOrSubmitted || streamStartedAtRef.current === null) {
       return
     }
 
@@ -87,7 +89,7 @@ export function ChatPanel({
     tick()
     const intervalId = window.setInterval(tick, 100)
     return () => window.clearInterval(intervalId)
-  }, [isBusy])
+  }, [status])
 
   const handleSubmit = useCallback(
     (text: string) => {
