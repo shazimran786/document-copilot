@@ -69,9 +69,11 @@ export function ChatPanel({
     const lastAssistant = [...messages]
       .reverse()
       .find((message) => message.role === "assistant")
-    if (lastAssistant && onResponseTimeRecorded) {
-      onResponseTimeRecorded(lastAssistant.id, elapsedMs)
+    if (!lastAssistant || !onResponseTimeRecorded) {
+      return
     }
+
+    onResponseTimeRecorded(lastAssistant.id, elapsedMs)
     recordedStreamRef.current = true
     streamStartedAtRef.current = null
   }, [status, messages, onResponseTimeRecorded])
