@@ -34,6 +34,11 @@ export function ChatPage() {
 function ThreadChatView({ threadId }: { threadId: string }) {
   const { refetchThreads } = useOutletContext<ChatOutletContext>()
   const [initialMessages, setInitialMessages] = useState<ChatMessage[]>([])
+  const [hydrationKey, setHydrationKey] = useState(0)
+  const [hydrationError, setHydrationError] = useState<string | null>(null)
+  const [responseTimesByMessageId, setResponseTimesByMessageId] = useState<
+    Record<string, number>
+  >({})
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<ApiError | null>(null)
 
@@ -95,11 +100,43 @@ function ThreadChatView({ threadId }: { threadId: string }) {
     )
   }
 
+  async function handleStreamComplete() {
+    setHydrationError(null)
+    try {
+      await refetchThreads()
+      const freshMessages = await getThreadMessages(threadId)
+      setInitialMessages(freshMessages)
+      setHydrationKey((current) => current + 1)
+    } catch {
+      setHydrationError(
+        "Answer saved, but sources could not load. Refresh the page to see citations.",
+      )
+    }
+  }
+
   return (
-    <ChatPanel
-      threadId={threadId}
-      initialMessages={initialMessages}
-      onStreamComplete={() => void refetchThreads()}
-    />
+    <>
+      {hydrationError ? (
+        <div className="px-6 pt-3">
+          <ChatErrorBanner
+            message={hydrationError}
+            onRetry={() => void handleStreamComplete()}
+          />
+        </div>
+      ) : null}
+      <ChatPanel
+        key={`${threadId}-${hydrationKey}`}
+        threadId={threadId}
+        initialMessages={initialMessages}
+        responseTimesByMessageId={responseTimesByMessageId}
+        onResponseTimeRecorded={(messageId, elapsedMs) =>
+          setResponseTimesByMessageId((current) => ({
+            ...current,
+            [messageId]: elapsedMs,
+          }))
+        }
+        onStreamComplete={() => void handleStreamComplete()}
+      />
+    </>
   )
 }

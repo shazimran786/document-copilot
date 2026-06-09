@@ -45,6 +45,37 @@ def test_build_assistant_ui_message_includes_citation_metadata() -> None:
 
     assert message["metadata"]["citations"][0]["ticker"] == "NVDA"
     assert message["metadata"]["citations"][0]["stableChunkId"] == "acc:1"
+    assert (
+        message["metadata"]["citations"][0]["passageText"]
+        == "Data Center demand increased during the year."
+    )
+    assert message["metadata"]["insufficientEvidence"] is False
+    assert message["metadata"]["validationFailed"] is False
+
+
+def test_build_assistant_ui_message_insufficient_evidence_without_citations() -> None:
+    message = build_assistant_ui_message(
+        "msg_refusal",
+        "The filings do not contain enough evidence.",
+        insufficient_evidence=True,
+    )
+
+    assert message["metadata"]["insufficientEvidence"] is True
+    assert message["metadata"]["validationFailed"] is False
+    assert message["metadata"]["citations"] == []
+
+
+def test_build_assistant_ui_message_validation_failed() -> None:
+    message = build_assistant_ui_message(
+        "msg_fallback",
+        "Could not verify citations.",
+        insufficient_evidence=True,
+        validation_failed=True,
+    )
+
+    assert message["metadata"]["validationFailed"] is True
+    assert message["metadata"]["insufficientEvidence"] is True
+    assert message["metadata"]["citations"] == []
 
 
 def test_build_citation_db_metadata_uses_snake_case() -> None:

@@ -7,4 +7,28 @@ export type ChatThread = {
   updatedAt: string
 }
 
-export type ChatMessage = UIMessage
+export type CitationMetadata = {
+  chunkId: string
+  stableChunkId: string
+  claimIndex: number
+  excerpt: string
+  passageText?: string
+  ticker: string
+  companyName: string
+  filingType: string
+  fiscalYear: number
+  sectionLabel: string | null
+  pageLabel: string | null
+  sourceUrl: string
+  accessionNumber: string
+}
+
+export type AssistantMessageMetadata = {
+  citations: CitationMetadata[]
+  insufficientEvidence: boolean
+  validationFailed: boolean
+}
+
+export type ChatMessage = UIMessage & {
+  metadata?: AssistantMessageMetadata
+}

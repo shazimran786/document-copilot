@@ -89,6 +89,7 @@ def _persist_turn_result(
             assistant_message_json(
                 turn_result.message_id,
                 turn_result.answer.answer,
+                turn_result=turn_result,
             ),
             assistant_sequence,
             message_id=turn_result.message_uuid,

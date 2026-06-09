@@ -10,14 +10,15 @@ Reference: [architecture.md](architecture.md) · [client-brief.md](client-brief.
 
 ---
 
-## Progress snapshot (2026-06-08)
+## Progress snapshot (2026-06-09)
 
-- **Branch:** Local `development` — Phases 4–6 complete (uncommitted). **Do not** blind `git pull` vs `origin/development` (remote still has the reverted full RAG stack).
+- **Branch:** Local `development` — Phases 4–7 code complete (uncommitted). **Do not** blind `git pull` vs `origin/development` (remote still has the reverted full RAG stack).
 - **Phase 0–4:** Complete — toolchain, Supabase, schema, auth shell, stubbed chat, corpus download, Docling conversion, full ingest to Supabase.
 - **Phase 5:** Complete — hybrid retrieval (pgvector + full-text + RRF fusion).
-- **Phase 6:** Complete — PydanticAI agent, grounding validator, real `POST /chat/stream`. **Next:** Phase 7 citations UI.
-- **Tests:** `uv run pytest -v` — 45 passing (grounding, assistant, chat, retrieval, ingest, API).
-- **Plans:** [phase-one](../implementation-plan/phase-one-implementation-plan.md) · [phase-two](../implementation-plan/phase-two-implementation-plan.md) · [phase-three](../implementation-plan/phase-three-implementation-plan.md) · [phase-four](../implementation-plan/phase-four-implementation-plan.md) · [phase-five](../implementation-plan/phase-five-implementation-plan.md) · [phase-five-testing](../implementation-plan/phase-five-testing-plan.md) · [phase-six](../implementation-plan/phase-six-implementation-plan.md) · [phase-six-testing](../implementation-plan/phase-six-testing-plan.md)
+- **Phase 6:** Complete — PydanticAI agent, grounding validator, real `POST /chat/stream`.
+- **Phase 7:** Code complete — citation chips, passage panel, trust banners, post-stream metadata hydration. **Next:** manual browser pass (MT-1/MT-2), then Phase 8 pilot readiness.
+- **Tests:** `uv run pytest -v` — 47 passing (grounding, assistant, chat, retrieval, ingest, API).
+- **Plans:** [phase-one](../implementation-plan/phase-one-implementation-plan.md) · [phase-two](../implementation-plan/phase-two-implementation-plan.md) · [phase-three](../implementation-plan/phase-three-implementation-plan.md) · [phase-four](../implementation-plan/phase-four-implementation-plan.md) · [phase-five](../implementation-plan/phase-five-implementation-plan.md) · [phase-five-testing](../implementation-plan/phase-five-testing-plan.md) · [phase-six](../implementation-plan/phase-six-implementation-plan.md) · [phase-six-testing](../implementation-plan/phase-six-testing-plan.md) · [phase-seven](../implementation-plan/phase-seven-implementation-plan.md) · [phase-seven-testing](../implementation-plan/phase-seven-testing-plan.md)
 - **Issues logs:** [INGESTION_ISSUES.md](../backend/ingest/INGESTION_ISSUES.md) (Phase 4) · [phase-six-implementation-issues.md](../implementation-plan/phase-six-implementation-issues.md) (Phase 6)
 - **Corpus (Supabase):** 25 `source_documents`, 7,470 `document_chunks`, 100% embedded.
 - **Windows note:** `corepack enable` needs Administrator — use `npm install -g pnpm` instead.
@@ -220,9 +221,11 @@ Replace the Phase 3 stub with the real turn: retrieve → generate → validate 
 
 This is what analysts touch daily once answers are real. Polish here drives pilot adoption.
 
-- [ ] Citation UI: filing name, company, date, page/section per claim
-- [ ] Source passage panel: expandable excerpt so analyst can verify in one click
-- [ ] "Insufficient evidence" / "not in corpus" messaging (matches trust contract)
+**Plan:** [phase-seven-implementation-plan.md](../implementation-plan/phase-seven-implementation-plan.md) · **Testing:** [phase-seven-testing-plan.md](../implementation-plan/phase-seven-testing-plan.md)
+
+- [x] Citation UI: filing name, company, date, page/section per claim
+- [x] Source passage panel: expandable excerpt so analyst can verify in one click
+- [x] "Insufficient evidence" / "not in corpus" messaging (matches trust contract)
 - [ ] Manual pass: sign in → ask real question → see streamed cited answer → click citation → read passage
 
 ---
@@ -275,7 +278,7 @@ From [client-brief.md](client-brief.md) — tick when true in production:
 | 3    | Phase 3: Stubbed chat slice *(complete)*                                |
 | 4    | Phase 4: Download corpus, ingest *(complete)* · Phase 5: hybrid retrieval *(complete)* |
 | 5    | Phase 6: Real streaming agent + grounding *(complete)*               |
-| 6    | Phase 7–9: Citations UI, hardening, deploy, pilot                    |
+| 6    | Phase 7: Citations UI *(code complete)* · Phase 8–9: hardening, deploy, pilot |
 
 
 Adjust pace as needed; **do not wire the real agent until ingestion and retrieval are working** (Phases 4–5 before Phase 6).

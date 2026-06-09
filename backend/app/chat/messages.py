@@ -76,6 +76,7 @@ def build_citation_ui_metadata(
         "stableChunkId": citation.stable_chunk_id,
         "claimIndex": citation.claim_index,
         "excerpt": citation.excerpt,
+        "passageText": passage.chunk_text,
         "ticker": passage.document.ticker,
         "companyName": passage.document.company_name,
         "filingType": passage.document.filing_type,
@@ -93,23 +94,33 @@ def build_assistant_ui_message(
     *,
     citations: list[Citation] | None = None,
     passages: dict[UUID, SourcePassage] | None = None,
+    insufficient_evidence: bool = False,
+    validation_failed: bool = False,
 ) -> dict[str, Any]:
     message: dict[str, Any] = {
         "id": message_id,
         "role": "assistant",
         "parts": [{"type": "text", "text": text}],
     }
+
+    citation_payload: list[dict[str, Any]] = []
     if citations and passages:
+        citation_payload = [
+            build_citation_ui_metadata(
+                citation,
+                passages[citation.chunk_id],
+            )
+            for citation in citations
+            if citation.chunk_id in passages
+        ]
+
+    if citation_payload or insufficient_evidence or validation_failed:
         message["metadata"] = {
-            "citations": [
-                build_citation_ui_metadata(
-                    citation,
-                    passages[citation.chunk_id],
-                )
-                for citation in citations
-                if citation.chunk_id in passages
-            ]
+            "citations": citation_payload,
+            "insufficientEvidence": insufficient_evidence,
+            "validationFailed": validation_failed,
         }
+
     return message
 
 

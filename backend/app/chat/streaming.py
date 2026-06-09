@@ -91,6 +91,8 @@ def assistant_message_json(
         text,
         citations=turn_result.answer.citations,
         passages=turn_result.passages,
+        insufficient_evidence=turn_result.answer.insufficient_evidence,
+        validation_failed=turn_result.validation_failed,
     )
 
 

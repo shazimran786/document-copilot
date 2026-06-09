@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react"
 
+import { AssistantMessageBubble } from "@/components/chat/AssistantMessageBubble"
 import { MessageBubble } from "@/components/chat/MessageBubble"
 import { StreamingIndicator } from "@/components/chat/StreamingIndicator"
 import type { ChatMessage } from "@/lib/chat-types"
@@ -7,9 +8,16 @@ import type { ChatMessage } from "@/lib/chat-types"
 type MessageListProps = {
   messages: ChatMessage[]
   status: "submitted" | "streaming" | "ready" | "error"
+  liveElapsedMs?: number
+  responseTimesByMessageId?: Record<string, number>
 }
 
-export function MessageList({ messages, status }: MessageListProps) {
+export function MessageList({
+  messages,
+  status,
+  liveElapsedMs,
+  responseTimesByMessageId = {},
+}: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const isStreaming = status === "streaming" || status === "submitted"
   const lastMessage = messages.at(-1)
@@ -31,6 +39,18 @@ export function MessageList({ messages, status }: MessageListProps) {
           const streaming =
             isLast && isStreaming && message.role === "assistant"
 
+          if (message.role === "assistant") {
+            return (
+              <AssistantMessageBubble
+                key={message.id}
+                message={message}
+                streaming={streaming}
+                liveElapsedMs={streaming ? liveElapsedMs : undefined}
+                responseTimeMs={responseTimesByMessageId[message.id]}
+              />
+            )
+          }
+
           return (
             <MessageBubble
               key={message.id}
@@ -39,7 +59,11 @@ export function MessageList({ messages, status }: MessageListProps) {
             />
           )
         })}
-        {showIndicator ? <StreamingIndicator /> : null}
+        {showIndicator ? (
+          <StreamingIndicator
+            elapsedMs={waitingForAssistant ? liveElapsedMs : undefined}
+          />
+        ) : null}
         <div ref={bottomRef} />
       </div>
     </div>

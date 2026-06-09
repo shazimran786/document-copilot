@@ -80,3 +80,53 @@ async def _test_stream_turn_returns_validated_result() -> None:
     result = items[-1]
     assert result.answer.answer == grounded.answer
     assert result.validation_failed is False
+
+
+def test_stream_turn_preserves_insufficient_evidence_when_model_adds_citations() -> None:
+    asyncio.run(_test_stream_turn_preserves_insufficient_evidence_when_model_adds_citations())
+
+
+async def _test_stream_turn_preserves_insufficient_evidence_when_model_adds_citations() -> None:
+    passage = _passage()
+    grounded = GroundedAnswer(
+        answer="The filings do not prove generative AI improved margins.",
+        citations=[
+            Citation(
+                chunk_id=passage.chunk_id,
+                stable_chunk_id=passage.stable_chunk_id,
+                claim_index=0,
+                excerpt="AWS operating margin expanded",
+            )
+        ],
+        insufficient_evidence=True,
+    )
+    retriever = MagicMock()
+    retriever.search.return_value = RetrievalResult(
+        query=RetrievalQuery(text="generative AI margins"),
+        passages=[passage],
+        fused_hits=[],
+        semantic_candidates=1,
+        fulltext_candidates=0,
+    )
+
+    run_result = MagicMock()
+    run_result.output = grounded
+
+    with patch(
+        "app.chat.orchestrator.document_agent.run",
+        AsyncMock(return_value=run_result),
+    ):
+        items: list[object] = []
+        async for item in stream_turn(
+            user_text="generative AI margins",
+            thread_id=uuid4(),
+            user_id="user-1",
+            retriever=retriever,
+            validator=GroundingValidator(),
+        ):
+            items.append(item)
+
+    result = items[-1]
+    assert result.validation_failed is False
+    assert result.answer.insufficient_evidence is True
+    assert result.answer.citations == []

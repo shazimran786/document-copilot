@@ -98,6 +98,50 @@ def test_validator_allows_insufficient_evidence_without_citations() -> None:
     GroundingValidator().validate(answer, {})
 
 
+def test_validator_accepts_accession_only_stable_chunk_id_when_chunk_id_matches() -> None:
+    chunk_id = uuid4()
+    passage = _passage(
+        chunk_id,
+        "0001018724-22-000005:60",
+        "AWS operating margin expanded during the year.",
+    )
+    answer = GroundedAnswer(
+        answer="AWS operating margin expanded.",
+        citations=[
+            Citation(
+                chunk_id=chunk_id,
+                stable_chunk_id="0001018724-22-000005",
+                claim_index=0,
+                excerpt="AWS operating margin expanded",
+            )
+        ],
+    )
+
+    GroundingValidator().validate(answer, {chunk_id: passage})
+
+
+def test_validator_accepts_excerpt_with_table_pipe_normalization() -> None:
+    chunk_id = uuid4()
+    passage = _passage(
+        chunk_id,
+        "0001045810-23-000017:10",
+        "| Data Center | Revenue | Up 125% | Demand drivers remained strong |",
+    )
+    answer = GroundedAnswer(
+        answer="Data Center demand drivers remained strong.",
+        citations=[
+            Citation(
+                chunk_id=chunk_id,
+                stable_chunk_id="0001045810-23-000017:10",
+                claim_index=0,
+                excerpt="Demand drivers remained strong",
+            )
+        ],
+    )
+
+    GroundingValidator().validate(answer, {chunk_id: passage})
+
+
 def test_validator_rejects_citations_with_insufficient_evidence() -> None:
     chunk_id = uuid4()
     passage = _passage(chunk_id, "acc:1", "AWS operating margin expanded.")

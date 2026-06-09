@@ -35,6 +35,17 @@ def _seed_passages(retrieval_passages: list[SourcePassage]) -> dict[UUID, Source
     return {passage.chunk_id: passage for passage in retrieval_passages}
 
 
+def _normalize_agent_answer(answer: GroundedAnswer) -> GroundedAnswer:
+    """Fix common model mistakes before grounding validation."""
+    if answer.insufficient_evidence and answer.citations:
+        logger.info(
+            "Dropping %d citation(s) from insufficient_evidence answer",
+            len(answer.citations),
+        )
+        return answer.model_copy(update={"citations": []})
+    return answer
+
+
 async def stream_turn(
     *,
     user_text: str,
@@ -71,6 +82,7 @@ async def stream_turn(
         raise
 
     assert grounded_answer is not None
+    grounded_answer = _normalize_agent_answer(grounded_answer)
 
     try:
         validator.validate(grounded_answer, deps.retrieved_passages)
