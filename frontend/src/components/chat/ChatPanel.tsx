@@ -81,12 +81,13 @@ export function ChatPanel({
   useEffect(() => {
     const streamingOrSubmitted =
       status === "streaming" || status === "submitted"
-    if (!streamingOrSubmitted || streamStartedAtRef.current === null) {
+    const startedAt = streamStartedAtRef.current
+    if (!streamingOrSubmitted || startedAt === null) {
       return
     }
 
     const tick = () => {
-      setLiveElapsedMs(Date.now() - (streamStartedAtRef.current ?? Date.now()))
+      setLiveElapsedMs(Date.now() - startedAt)
     }
     tick()
     const intervalId = window.setInterval(tick, 100)
